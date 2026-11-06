@@ -41,7 +41,8 @@ const PALETTES = {
   dhuhr: { scheme: "light", bg0: "#e7e2d6", bg1: "#c5d0c6", bg2: "#f3ecdf", accent: "#0e5b50", accentInk: "#f4efe4", accentSoft: "rgba(14,91,80,.12)", ink: "#1b1914", muted: "#5c574e", faint: "rgba(27,25,20,.45)", line: "rgba(27,25,20,.12)", chip: "rgba(255,255,255,.46)", nav: "rgba(231,226,214,.9)" },
   asr: { scheme: "light", bg0: "#f0e2c8", bg1: "#e7c49a", bg2: "#f6edd9", accent: "#8a3e1d", accentInk: "#fff6ea", accentSoft: "rgba(138,62,29,.12)", ink: "#2a1c12", muted: "#6f5644", faint: "rgba(42,28,18,.48)", line: "rgba(42,28,18,.12)", chip: "rgba(255,252,245,.5)", nav: "rgba(240,226,200,.9)" },
   maghrib: { scheme: "dark", bg0: "#241820", bg1: "#7a3040", bg2: "#c4623a", accent: "#ffc7a3", accentInk: "#2a1612", accentSoft: "rgba(255,199,163,.16)", ink: "#fff3ea", muted: "#e4c8bc", faint: "rgba(255,243,234,.5)", line: "rgba(255,243,234,.14)", chip: "rgba(255,255,255,.06)", nav: "rgba(28,16,22,.82)" },
-  isha: { scheme: "dark", bg0: "#0e1420", bg1: "#1a2740", bg2: "#243656", accent: "#e4c27a", accentInk: "#2a2118", accentSoft: "rgba(228,194,122,.16)", ink: "#f4efe4", muted: "#b7c0d0", faint: "rgba(244,239,228,.48)", line: "rgba(244,239,228,.12)", chip: "rgba(255,255,255,.06)", nav: "rgba(10,14,22,.84)" },
+  isha: { scheme: "dark", bg0: "#0e1420", bg1: "#1a2740", bg2: "#243656", accent: "#e4c27a", accentInk: "#2a2118", accentSoft: "rgba(228,194,122,.16)", ink: "#f4efe4", muted: "#b7c0d0", faint: "rgba(244,239,228,.72)", line: "rgba(244,239,228,.12)", chip: "rgba(255,255,255,.06)", nav: "rgba(10,14,22,.84)" },
+  plain: { scheme: "light", bg0: "#f6f3ec", bg1: "#f6f3ec", bg2: "#f6f3ec", accent: "#0c3d34", accentInk: "#ffffff", accentSoft: "rgba(12,61,52,.14)", ink: "#141414", muted: "#2c2c2c", faint: "#3f3f3f", line: "rgba(20,20,20,.18)", chip: "#ffffff", nav: "#fffdf8" },
 };
 
 const byId = new Map(PLACES.map((place) => [place.id, place]));
@@ -507,7 +508,8 @@ function shiftMonth(amount) {
 function render() {
   ensureSelection();
   applyPalette(activePalette());
-  $("place-name").textContent = state.place ? state.place.name : "Konum seç";
+  $("place-name").textContent = state.place ? state.place.name : "Şehir seç";
+  document.querySelector(".place-action").textContent = state.place ? "Değiştir" : "Seç";
   document.querySelectorAll("[data-need-place]").forEach((element) => {
     element.hidden = Boolean(state.place);
   });
@@ -537,7 +539,7 @@ function renderToday() {
   if (!state.place) return;
   const today = cityToday(state.place.tz);
   const isToday = sameDay(state.selected, today);
-  $("day-label").textContent = formatLong(state.selected);
+  $("day-label").textContent = isToday ? "Bugün" : formatLong(state.selected);
   $("back-today").hidden = isToday;
   const pack = compute(state.place, state.selected);
   fillTimes($("time-list"), pack, state.place, state.selected, today);
@@ -727,14 +729,12 @@ function updateLive() {
 
 function paletteName() {
   if (state.theme === "night") return "night";
-  if (state.theme === "day") return "day";
-  return `auto:${currentPrayerKey()}`;
+  return "plain";
 }
 
 function activePalette() {
   if (state.theme === "night") return PALETTES.isha;
-  if (state.theme === "day") return PALETTES.dhuhr;
-  return PALETTES[currentPrayerKey()] || PALETTES.isha;
+  return PALETTES.plain;
 }
 
 function currentPrayerKey() {

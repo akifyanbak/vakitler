@@ -13,7 +13,7 @@ Adresler görelidir. Uygulama hem depo sayfasında (`/vakitler/`) hem de alan ad
 
 ## Ne yapar
 
-- İmsak, güneş, öğle, ikindi, akşam ve yatsı
+- İmsak, güneş, öğle, ikindi, akşam ve yatsı, büyük yazıyla tek ekranda
 - İl, ilçe ve sık kullanılan şehir araması; tarayıcı konumu veya koordinat
 - Kıble açısı ve pusula
 - Aylık takvim, hicri tarih

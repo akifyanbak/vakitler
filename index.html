@@ -28,16 +28,12 @@
     <div class="app">
       <header class="top">
         <p class="wordmark">Vakitler</p>
-        <div class="top-actions">
-          <button type="button" class="install" id="install-button" hidden>Yükle</button>
-          <button type="button" class="place" id="place-button">
-            <svg viewBox="0 0 24 24" aria-hidden="true" width="16" height="16">
-              <path fill="currentColor" d="M12 2.5a7 7 0 0 0-7 7c0 5.1 6.1 11.2 6.4 11.5a.9.9 0 0 0 1.2 0C12.9 20.7 19 14.6 19 9.5a7 7 0 0 0-7-7Zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5Z"/>
-            </svg>
-            <span id="place-name">Konum seç</span>
-          </button>
-        </div>
+        <button type="button" class="install" id="install-button" hidden>Yükle</button>
       </header>
+      <button type="button" class="place place-wide" id="place-button">
+        <span id="place-name">Şehir seç</span>
+        <span class="place-action">Değiştir</span>
+      </button>
       <p class="dateline">
         <strong id="date-line">Bir konum seçin</strong>
         <span id="hijri-line"></span>
@@ -47,30 +43,22 @@
       <main id="icerik">
         <section id="view-today">
           <div id="welcome" data-need-place>
-            <p class="kicker">Namaz vakitleri</p>
-            <p class="display">Bugünün vaktini, cebinde.</p>
-            <p class="lede">
-              Konumunuza göre imsak, güneş, öğle, ikindi, akşam ve yatsı. Hesap bu cihazda yapılır;
-              sayfa bir kez açıldıktan sonra internet olmadan da çalışır.
-            </p>
+            <p class="display">Bugünün vakitleri</p>
+            <p class="lede">Şehrini seç. Vakitler büyük yazıyla listelenir.</p>
             <div class="welcome-actions">
-              <button type="button" class="primary" id="welcome-geo">Konumumu kullan</button>
-              <button type="button" class="ghost" id="welcome-search">Şehir seç</button>
+              <button type="button" class="primary big" id="welcome-search">Şehir seç</button>
+              <button type="button" class="ghost big" id="welcome-geo">Konumumu kullan</button>
             </div>
           </div>
 
           <div id="today-body" data-has-place hidden>
             <div class="daynav">
-              <button type="button" class="iconbtn" id="prev-day" aria-label="Önceki gün">
-                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M14.5 5.5 8 12l6.5 6.5"/></svg>
-              </button>
+              <button type="button" class="daybtn" id="prev-day">Dün</button>
               <div class="daynav-label">
                 <p id="day-label"></p>
                 <button type="button" class="textbtn" id="back-today" hidden>Bugüne dön</button>
               </div>
-              <button type="button" class="iconbtn" id="next-day" aria-label="Sonraki gün">
-                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M9.5 5.5 16 12l-6.5 6.5"/></svg>
-              </button>
+              <button type="button" class="daybtn" id="next-day">Yarın</button>
             </div>
 
             <article class="hero" aria-live="off">
@@ -85,10 +73,13 @@
             </article>
 
             <ol class="times" id="time-list"></ol>
-            <div class="sunnah" id="sunnah">
-              <span>Gece yarısı <time id="sunnah-mid">—</time></span>
-              <span>Son üçte bir <time id="sunnah-last">—</time></span>
-            </div>
+            <details class="extra">
+              <summary>Gece saatleri</summary>
+              <div class="sunnah" id="sunnah">
+                <span>Gece yarısı <time id="sunnah-mid">—</time></span>
+                <span>Son üçte bir <time id="sunnah-last">—</time></span>
+              </div>
+            </details>
             <p class="footnote">
               <span id="method-note"></span>
               <button type="button" class="textbtn" id="copy-button">Kopyala</button>
@@ -136,77 +127,84 @@
             <p class="qibla-readout"><strong id="qibla-deg">—</strong> <span>kuzeyden, saat yönünde</span></p>
             <p class="qibla-distance" id="qibla-distance"></p>
             <button type="button" class="primary" id="compass-permit">Pusulayı aç</button>
-            <p class="footnote" id="compass-note">Ok kuzeye göre kıbleyi gösterir. Pusula açılırsa telefonu çevirdiğinizde ok yukarı bakınca Kâbe yönündesiniz.</p>
+            <p class="footnote" id="compass-note">Telefonu düz tut. Ok yukarı bakınca kıbleye dönüksün.</p>
           </div>
         </section>
 
         <section id="view-settings" hidden>
           <section class="group">
-            <h2>Hesap</h2>
-            <label class="field">Yöntem
-              <select id="method-select"></select>
-            </label>
-            <p class="hint" id="method-hint"></p>
+            <h2>İkindi</h2>
             <label class="field">Mezhep
               <select id="madhab-select">
-                <option value="Hanafi">Hanefî · ikindi geç</option>
-                <option value="Shafi">Şâfiî · ikindi erken</option>
-              </select>
-            </label>
-            <label class="field">Yüksek enlem
-              <select id="latitude-select">
-                <option value="middleofthenight">Gecenin ortası</option>
-                <option value="seventhofthenight">Gecenin yedide biri</option>
-                <option value="twilightangle">Alacakaranlık açısı</option>
+                <option value="Hanafi">Hanefî, ikindi geç</option>
+                <option value="Shafi">Şâfiî, ikindi erken</option>
               </select>
             </label>
           </section>
 
-          <section class="group">
-            <h2>Görünüm</h2>
-            <label class="field">Tema
-              <select id="theme-select">
-                <option value="auto">Vakte göre</option>
-                <option value="night">Gece</option>
-                <option value="day">Gündüz</option>
-              </select>
-            </label>
-          </section>
+          <details class="extra">
+            <summary>Diğer ayarlar</summary>
+            <section class="group">
+              <h2>Hesap</h2>
+              <label class="field">Yöntem
+                <select id="method-select"></select>
+              </label>
+              <p class="hint" id="method-hint"></p>
+              <label class="field">Yüksek enlem
+                <select id="latitude-select">
+                  <option value="middleofthenight">Gecenin ortası</option>
+                  <option value="seventhofthenight">Gecenin yedide biri</option>
+                  <option value="twilightangle">Alacakaranlık açısı</option>
+                </select>
+              </label>
+            </section>
 
-          <section class="group">
-            <h2>Hatırlatma</h2>
-            <label class="field">Bildirim
-              <select id="remind-select">
-                <option value="off">Kapalı</option>
-                <option value="0">Vakit girince</option>
-                <option value="10">10 dakika önce</option>
-                <option value="15">15 dakika önce</option>
-              </select>
-            </label>
-            <p class="hint" id="remind-note">Hatırlatma, bu sekme açıkken çalışır.</p>
-          </section>
+            <section class="group">
+              <h2>Görünüm</h2>
+              <label class="field">Tema
+                <select id="theme-select">
+                  <option value="auto">Sade</option>
+                  <option value="day">Gündüz</option>
+                  <option value="night">Gece</option>
+                </select>
+              </label>
+            </section>
 
-          <section class="group">
-            <h2>Dakika düzeltmesi</h2>
-            <p class="hint">Caminizin cetveline uyması için her vakite dakika ekleyin veya çıkarın.</p>
-            <div class="adj-grid">
-              <label>İmsak <input type="number" data-adj="fajr" min="-30" max="30" step="1" value="0" inputmode="numeric" /></label>
-              <label>Güneş <input type="number" data-adj="sunrise" min="-30" max="30" step="1" value="0" inputmode="numeric" /></label>
-              <label>Öğle <input type="number" data-adj="dhuhr" min="-30" max="30" step="1" value="0" inputmode="numeric" /></label>
-              <label>İkindi <input type="number" data-adj="asr" min="-30" max="30" step="1" value="0" inputmode="numeric" /></label>
-              <label>Akşam <input type="number" data-adj="maghrib" min="-30" max="30" step="1" value="0" inputmode="numeric" /></label>
-              <label>Yatsı <input type="number" data-adj="isha" min="-30" max="30" step="1" value="0" inputmode="numeric" /></label>
-            </div>
-          </section>
+            <section class="group">
+              <h2>Hatırlatma</h2>
+              <label class="field">Bildirim
+                <select id="remind-select">
+                  <option value="off">Kapalı</option>
+                  <option value="0">Vakit girince</option>
+                  <option value="10">10 dakika önce</option>
+                  <option value="15">15 dakika önce</option>
+                </select>
+              </label>
+              <p class="hint" id="remind-note">Hatırlatma, bu sekme açıkken çalışır.</p>
+            </section>
 
-          <section class="group about">
-            <h2>Hakkında</h2>
-            <p>Vakitler tamamen tarayıcıda çalışır. GitHub Pages gibi statik bir sitede sunucu gerekmez.</p>
-            <p>Vakit hesabı adhan kütüphanesinin Türkiye yöntemiyle yapılır. Diyanet’in ilan ettiği çizelgeden bir-iki dakika sapabilir.</p>
-            <p>Hicri tarih Ümmü’l-Kurâ takvimine göredir; Diyanet’in ilan ettiği günden bir gün farklı olabilir.</p>
-            <p id="ios-note" hidden>iPhone’da ana ekrana eklemek için paylaş menüsünden “Ana Ekrana Ekle”yi seçin.</p>
-            <button type="button" class="ghost" id="reset-button">Ayarları sıfırla</button>
-          </section>
+            <section class="group">
+              <h2>Dakika düzeltmesi</h2>
+              <p class="hint">Caminizin cetveline uyması için her vakite dakika ekleyin veya çıkarın.</p>
+              <div class="adj-grid">
+                <label>İmsak <input type="number" data-adj="fajr" min="-30" max="30" step="1" value="0" inputmode="numeric" /></label>
+                <label>Güneş <input type="number" data-adj="sunrise" min="-30" max="30" step="1" value="0" inputmode="numeric" /></label>
+                <label>Öğle <input type="number" data-adj="dhuhr" min="-30" max="30" step="1" value="0" inputmode="numeric" /></label>
+                <label>İkindi <input type="number" data-adj="asr" min="-30" max="30" step="1" value="0" inputmode="numeric" /></label>
+                <label>Akşam <input type="number" data-adj="maghrib" min="-30" max="30" step="1" value="0" inputmode="numeric" /></label>
+                <label>Yatsı <input type="number" data-adj="isha" min="-30" max="30" step="1" value="0" inputmode="numeric" /></label>
+              </div>
+            </section>
+
+            <section class="group about">
+              <h2>Hakkında</h2>
+              <p>Vakitler tamamen tarayıcıda çalışır. GitHub Pages gibi statik bir sitede sunucu gerekmez.</p>
+              <p>Vakit hesabı adhan kütüphanesinin Türkiye yöntemiyle yapılır. Diyanet’in ilan ettiği çizelgeden bir-iki dakika sapabilir.</p>
+              <p>Hicri tarih Ümmü’l-Kurâ takvimine göredir; Diyanet’in ilan ettiği günden bir gün farklı olabilir.</p>
+              <p id="ios-note" hidden>iPhone’da ana ekrana eklemek için paylaş menüsünden “Ana Ekrana Ekle”yi seçin.</p>
+              <button type="button" class="ghost" id="reset-button">Ayarları sıfırla</button>
+            </section>
+          </details>
         </section>
       </main>
     </div>
