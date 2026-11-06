@@ -876,6 +876,68 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .sheet { padding-bottom: 1.1rem; }
 }
 
+@media (min-width: 960px) {
+  .app {
+    width: min(64rem, calc(100% - 4rem));
+    padding-bottom: 2.5rem;
+  }
+
+  .tabs {
+    position: sticky;
+    top: 0;
+    left: auto;
+    bottom: auto;
+    transform: none;
+    width: auto;
+    margin: 0.35rem 0 0.2rem;
+    padding: 0.35rem 0;
+    background: var(--bg0);
+    border-top: 0;
+    border-bottom: 2px solid var(--line);
+    backdrop-filter: none;
+  }
+
+  .tabs button {
+    flex-direction: row;
+    justify-content: center;
+    min-height: 3.1rem;
+    padding: 0.45rem 0.7rem;
+    font-size: 1.15rem;
+    border-radius: 12px;
+  }
+
+  .tabs button[aria-current="page"] { background: var(--accent-soft); }
+
+  .install-banner,
+  .place,
+  #welcome,
+  #view-month,
+  #view-qibla,
+  #view-settings { max-width: 42rem; }
+
+  #today-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(18rem, 0.85fr);
+    column-gap: 2.5rem;
+    align-items: start;
+  }
+
+  #today-body .daynav,
+  #today-body .extra,
+  #today-body .footnote { grid-column: 1 / -1; }
+
+  #today-body .times,
+  body:has(#install-button:not([hidden])) .times { margin-top: 0.2rem; }
+
+  body:has(#install-button:not([hidden])) .times li {
+    min-height: 2.8rem;
+    padding-top: 0.45rem;
+    padding-bottom: 0.45rem;
+  }
+
+  .toast { bottom: 1.5rem; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation: none !important;
