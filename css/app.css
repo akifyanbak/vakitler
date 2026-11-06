@@ -375,6 +375,9 @@ body {
   margin-top: 1.1rem;
 }
 
+#welcome-geo-status:empty { display: none; }
+#welcome-geo:disabled, #geo-button:disabled { opacity: 0.7; }
+
 #welcome { padding: 2.2rem 0 1rem; }
 
 .daynav {
