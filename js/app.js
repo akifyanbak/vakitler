@@ -47,6 +47,7 @@ let compassListening = false;
 let gotHeading = false;
 let toastTimer = 0;
 let notified = new Set(readNotified());
+let remindTimer = 0;
 
 init();
 
@@ -65,8 +66,11 @@ function init() {
   registerServiceWorker();
   setInterval(updateLive, 1000);
   document.addEventListener("visibilitychange", () => {
-    if (!document.hidden) updateLive();
+    if (document.hidden) return;
+    updateLive();
+    armReminder();
   });
+  armReminder();
 }
 
 function freshAdjustments() {
@@ -182,9 +186,7 @@ function syncForm() {
   for (const input of document.querySelectorAll("[data-adj]")) {
     input.value = String(state.adjustments[input.dataset.adj] ?? 0);
   }
-  $("remind-note").textContent = state.remind === "off"
-    ? "Hatırlatma, bu sekme açıkken çalışır."
-    : "İzin verildiyse hatırlatma bu sekme açıkken gelir.";
+  $("remind-note").textContent = remindNote();
 }
 
 function bind() {
@@ -833,6 +835,7 @@ function render() {
   renderMonth();
   renderQibla();
   showView(state.view);
+  armReminder();
 }
 
 function renderHeader() {
@@ -1191,16 +1194,26 @@ async function onRemindChange() {
     if (!allowed) {
       $("remind-select").value = "off";
       state.remind = "off";
-      $("remind-note").textContent = "Bildirim izni yok. Hatırlatma ancak izin verilirse çalışır.";
+      $("remind-note").textContent = "Bildirim izni yok. Telefon ayarından Vakitler’e izin ver.";
       save();
+      armReminder();
       return;
     }
-    $("remind-note").textContent = "İzin verildi. Hatırlatma bu sekme açıkken gelir.";
-  } else {
-    $("remind-note").textContent = "Hatırlatma kapalı.";
   }
   state.remind = value;
+  $("remind-note").textContent = remindNote();
   save();
+  checkReminders();
+  armReminder();
+}
+
+function remindNote() {
+  if (state.remind === "off") return "Kapalı. Vakit girince haber vermek için aç.";
+  if (!("Notification" in window)) return "Bu tarayıcı bildirim gönderemiyor.";
+  if (Notification.permission === "denied") return "Bildirim izni yok. Telefon ayarından Vakitler’e izin ver.";
+  if (isIos() && !isStandalone()) return "İzin tamam. iPhone’da bildirim için uygulamayı ana ekrana ekle.";
+  if (state.remind === "0") return "Vakit girince o vakti bildirir. Uygulama açıkken çalışır.";
+  return "Vakit gelmeden önce bildirir. Uygulama açıkken çalışır.";
 }
 
 async function ensureNotify() {
@@ -1214,42 +1227,101 @@ async function ensureNotify() {
   }
 }
 
+const PRAYER_KEYS = ["fajr", "dhuhr", "asr", "maghrib", "isha"];
+const NOTIFIED_KEY = "vakitler.notified";
+
 function checkReminders() {
   if (state.remind === "off" || !state.place || !("Notification" in window)) return;
   if (Notification.permission !== "granted") return;
-  const today = cityToday(state.place.tz);
-  const pack = compute(state.place, today);
-  if (!pack) return;
-  const lead = Number(state.remind) * 60 * 1000;
   const now = Date.now();
-  for (const key of ["fajr", "dhuhr", "asr", "maghrib", "isha"]) {
-    const when = pack.times[key].getTime() - lead;
-    const id = `${today.y}-${today.m}-${today.d}-${key}-${state.remind}`;
-    if (now >= when && now < when + 90000 && !notified.has(id)) {
-      notified.add(id);
-      sessionStorage.setItem("vakitler.notified", JSON.stringify([...notified]));
-      const mins = Number(state.remind);
-      const title = mins === 0 ? `${NAMES[key]} vakti` : `${NAMES[key]} için ${mins} dk`;
-      const body = `${state.place.name} · ${formatClock(pack.times[key], state.place.tz)}`;
-      try {
-        new Notification(title, {
-          body,
-          lang: "tr",
-          icon: new URL("../icons/icon-192.png", import.meta.url).href,
-        });
-      } catch {
-        /* bildirim oluşturulamadı */
-      }
+  const grace = Number(state.remind) === 0 ? 5 * 60 * 1000 : 2 * 60 * 1000;
+  for (const moment of remindMoments()) {
+    if (notified.has(moment.id)) continue;
+    if (now < moment.when || now >= moment.when + grace) continue;
+    notified.add(moment.id);
+    persistNotified();
+    void showReminder(moment);
+  }
+}
+
+function remindMoments() {
+  if (!state.place || state.remind === "off") return [];
+  const today = cityToday(state.place.tz);
+  const lead = Number(state.remind) * 60 * 1000;
+  const moments = [];
+  for (const day of [today, addDays(today, 1)]) {
+    const pack = compute(state.place, day);
+    if (!pack) continue;
+    for (const key of PRAYER_KEYS) {
+      const at = pack.times[key];
+      if (!isValidDate(at)) continue;
+      moments.push({
+        key,
+        when: at.getTime() - lead,
+        id: `${day.y}-${day.m}-${day.d}-${key}-${state.remind}`,
+        clock: formatClock(at, state.place.tz),
+      });
     }
+  }
+  moments.sort((a, b) => a.when - b.when);
+  return moments;
+}
+
+function armReminder() {
+  window.clearTimeout(remindTimer);
+  if (state.remind === "off" || !state.place || !("Notification" in window)) return;
+  if (Notification.permission !== "granted") return;
+  const now = Date.now();
+  const grace = Number(state.remind) === 0 ? 5 * 60 * 1000 : 2 * 60 * 1000;
+  const upcoming = remindMoments().find((moment) => !notified.has(moment.id) && now < moment.when + grace);
+  if (!upcoming) return;
+  const delay = Math.max(0, upcoming.when - now);
+  remindTimer = window.setTimeout(() => {
+    checkReminders();
+    armReminder();
+  }, Math.min(delay, 30 * 60 * 1000));
+}
+
+async function showReminder(moment) {
+  const entered = Number(state.remind) === 0;
+  const title = entered
+    ? `${NAMES[moment.key]} vakti girdi`
+    : `${NAMES[moment.key]} vaktine ${state.remind} dakika`;
+  const body = `${state.place.name} · ${moment.clock}`;
+  const icon = new URL("../icons/icon-192.png", import.meta.url).href;
+  const options = { body, lang: "tr", icon, tag: moment.id, renotify: true };
+  try {
+    const registration = "serviceWorker" in navigator ? await navigator.serviceWorker.getRegistration() : null;
+    if (registration?.showNotification) {
+      await registration.showNotification(title, options);
+      return;
+    }
+  } catch {
+    /* sayfa bildirimine düş */
+  }
+  try {
+    new Notification(title, options);
+  } catch {
+    /* bildirim oluşturulamadı */
   }
 }
 
 function readNotified() {
   try {
-    const parsed = JSON.parse(sessionStorage.getItem("vakitler.notified") || "[]");
-    return Array.isArray(parsed) ? parsed : [];
+    const parsed = JSON.parse(localStorage.getItem(NOTIFIED_KEY) || sessionStorage.getItem(NOTIFIED_KEY) || "[]");
+    return Array.isArray(parsed) ? parsed.filter((item) => typeof item === "string") : [];
   } catch {
     return [];
+  }
+}
+
+function persistNotified() {
+  const keep = [...notified].slice(-40);
+  notified = new Set(keep);
+  try {
+    localStorage.setItem(NOTIFIED_KEY, JSON.stringify(keep));
+  } catch {
+    /* depolama kapalı */
   }
 }
 
