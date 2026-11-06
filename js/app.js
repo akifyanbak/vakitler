@@ -641,43 +641,97 @@ function fold(value) {
     .replace(/\p{M}/gu, "");
 }
 
+let locating = false;
+let locatingToken = 0;
+
+function setGeoStatus(message) {
+  $("geo-status").textContent = message;
+  const welcome = $("welcome-geo-status");
+  if (welcome) welcome.textContent = message;
+}
+
+function setGeoBusy(busy) {
+  for (const id of ["welcome-geo", "geo-button"]) {
+    const button = $(id);
+    if (!button.dataset.label) button.dataset.label = button.textContent;
+    button.disabled = busy;
+    button.textContent = busy ? "Konum alınıyor…" : button.dataset.label;
+  }
+}
+
+function geoMessage(error) {
+  if (error.code === 1) return "Konum izni verilmedi. Şehir arayabilirsiniz.";
+  if (error.code === 3) return "Konum gecikti. Şehir arayabilirsiniz.";
+  return "Konum alınamadı. Şehir arayabilirsiniz.";
+}
+
+function placeFromCoords(lat, lon) {
+  const near = nearestPlace(lat, lon);
+  if (near && near.km <= 25) return near.place;
+  return {
+    id: `gps-${lat.toFixed(3)}-${lon.toFixed(3)}`,
+    name: "Bulunduğum yer",
+    region: `${lat.toFixed(2)}, ${lon.toFixed(2)}`,
+    lat,
+    lon,
+    tz: Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Istanbul",
+  };
+}
+
+function finishGeo(token, position) {
+  if (token !== locatingToken) return;
+  locating = false;
+  setGeoBusy(false);
+  setGeoStatus("");
+  choosePlace(placeFromCoords(position.coords.latitude, position.coords.longitude));
+}
+
+function failGeo(token, error) {
+  if (token !== locatingToken) return;
+  locating = false;
+  setGeoBusy(false);
+  setGeoStatus(geoMessage(error));
+}
+
 function useGeo() {
-  const status = $("geo-status");
+  if (locating) return;
   if (!navigator.geolocation) {
-    status.textContent = "Bu tarayıcı konum vermiyor.";
+    setGeoStatus("Bu tarayıcı konum vermiyor.");
     return;
   }
-  status.textContent = "Konum alınıyor…";
+  locating = true;
+  const token = ++locatingToken;
+  setGeoBusy(true);
+  setGeoStatus("");
+  const precise = { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 };
   navigator.geolocation.getCurrentPosition(
-    (position) => {
-      const lat = position.coords.latitude;
-      const lon = position.coords.longitude;
-      const near = nearestPlace(lat, lon);
-      let name = "Bulunduğum yer";
-      let region = `${lat.toFixed(2)}, ${lon.toFixed(2)}`;
-      if (near && near.km < 8) {
-        name = near.place.name;
-        region = near.place.region;
-      } else if (near && near.km < 35) {
-        name = `${near.place.name} çevresi`;
-        region = near.place.region;
+    (rough) => {
+      if (token !== locatingToken) return;
+      const accuracy = rough.coords.accuracy;
+      if (Number.isFinite(accuracy) && accuracy <= 3000) {
+        finishGeo(token, rough);
+        return;
       }
-      choosePlace({
-        id: `gps-${lat.toFixed(3)}-${lon.toFixed(3)}`,
-        name,
-        region,
-        lat,
-        lon,
-        tz: Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Istanbul",
-      });
-      status.textContent = "";
+      setGeoStatus("Konum netleşiyor…");
+      navigator.geolocation.getCurrentPosition(
+        (better) => finishGeo(token, better),
+        () => finishGeo(token, rough),
+        precise,
+      );
     },
     (error) => {
-      status.textContent = error.code === 1
-        ? "Konum izni verilmedi. Şehir arayabilirsiniz."
-        : "Konum alınamadı. Şehir arayabilirsiniz.";
+      if (token !== locatingToken) return;
+      if (error.code === 1) {
+        failGeo(token, error);
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (position) => finishGeo(token, position),
+        (err) => failGeo(token, err),
+        precise,
+      );
     },
-    { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 },
+    { enableHighAccuracy: false, timeout: 8000, maximumAge: 120000 },
   );
 }
 
