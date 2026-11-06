@@ -2,12 +2,14 @@
 
 Namaz vakitleri için kurulabilir, çevrimdışı çalışan bir PWA. Hesap tarayıcıda yapılır; GitHub Pages üzerinde sunucu gerekmez.
 
+Site: [https://akifyanbak.github.io/vakitler/](https://akifyanbak.github.io/vakitler/)
+
 ## GitHub Pages
 
 1. Depoda **Settings → Pages** bölümünü açın.
 2. **Build and deployment** kaynağını **Deploy from a branch** olarak seçin.
 3. Dal `main`, klasör `/ (root)` olsun.
-4. Kısa süre sonra site `https://<kullanıcı>.github.io/vakitler/` adresinde açılır.
+4. Kısa süre sonra site [https://akifyanbak.github.io/vakitler/](https://akifyanbak.github.io/vakitler/) adresinde açılır.
 
 Adresler görelidir. Uygulama hem depo sayfasında (`/vakitler/`) hem de alan adının kökünde çalışır. Dosyayı çift tıklayarak `file://` ile açmayın; hizmet çalışanı ancak bir adres üzerinden yüklenir.
 
