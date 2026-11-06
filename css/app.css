@@ -205,13 +205,28 @@ body {
   cursor: pointer;
 }
 
-.install {
-  border: 1px solid var(--line);
-  background: transparent;
-  color: var(--accent);
-  padding: 0.4rem 0.75rem;
-  font-size: 0.88rem;
+.install-banner {
+  display: block;
+  width: 100%;
+  margin-top: 0.75rem;
+  min-height: 3.3rem;
+  border: 0;
+  border-radius: 16px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font: inherit;
+  font-size: 1.2rem;
+  font-weight: 700;
+  cursor: pointer;
 }
+.steps {
+  margin: 0.4rem 0 1rem;
+  padding-left: 1.3rem;
+  font-size: 1.15rem;
+}
+.steps li { margin: 0.75rem 0; }
+.steps li strong { color: var(--ink); }
+#install-later { margin-top: 0.55rem; }
 
 .ghost {
   border: 1px solid var(--line);

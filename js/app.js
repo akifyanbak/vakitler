@@ -63,9 +63,7 @@ function init() {
   syncForm();
   bind();
   if ("share" in navigator) $("share-button").hidden = false;
-  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
-  const standalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone;
-  if (ios && !standalone) $("ios-note").hidden = false;
+  refreshInstallButton();
   if (typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function") {
     $("compass-permit").hidden = false;
   }
@@ -269,14 +267,25 @@ function bind() {
   });
   $("compass-permit").addEventListener("click", enableCompass);
   $("install-button").addEventListener("click", installApp);
+  $("install-close").addEventListener("click", () => $("install-dialog").close());
+  $("install-later").addEventListener("click", () => $("install-dialog").close());
+  $("install-done").addEventListener("click", () => {
+    markInstalled();
+    if ($("install-dialog").open) $("install-dialog").close();
+  });
+  $("install-native").addEventListener("click", () => installApp());
+  $("install-dialog").addEventListener("click", (event) => {
+    if (event.target === $("install-dialog")) $("install-dialog").close();
+  });
   window.addEventListener("beforeinstallprompt", (event) => {
     event.preventDefault();
     window.__vakitlerInstall = event;
-    $("install-button").hidden = false;
+    refreshInstallButton();
   });
   window.addEventListener("appinstalled", () => {
-    $("install-button").hidden = true;
+    markInstalled();
   });
+  window.matchMedia("(display-mode: standalone)").addEventListener("change", refreshInstallButton);
   window.addEventListener("online", updateOnline);
   window.addEventListener("offline", updateOnline);
   document.addEventListener("keydown", (event) => {
@@ -306,13 +315,64 @@ function showView(name) {
   if (name === "qibla") watchCompass();
 }
 
+const HOME_KEY = "vakitler.home";
+
+function isIos() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent)
+    || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
+function isStandalone() {
+  return window.matchMedia("(display-mode: standalone)").matches
+    || window.matchMedia("(display-mode: fullscreen)").matches
+    || navigator.standalone === true;
+}
+
+function markInstalled() {
+  try {
+    localStorage.setItem(HOME_KEY, "1");
+  } catch {
+    /* depolama kapalı */
+  }
+  window.__vakitlerInstall = null;
+  refreshInstallButton();
+}
+
+function homeFlag() {
+  try {
+    return localStorage.getItem(HOME_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function refreshInstallButton() {
+  if (isStandalone()) {
+    try {
+      localStorage.setItem(HOME_KEY, "1");
+    } catch {
+      /* depolama kapalı */
+    }
+  }
+  const offer = !isStandalone() && !homeFlag() && (isIos() || Boolean(window.__vakitlerInstall));
+  $("install-button").hidden = !offer;
+  document.documentElement.dataset.standalone = isStandalone() ? "true" : "false";
+}
+
 async function installApp() {
   const prompt = window.__vakitlerInstall;
-  if (!prompt) return;
-  prompt.prompt();
-  await prompt.userChoice;
-  window.__vakitlerInstall = null;
-  $("install-button").hidden = true;
+  if (prompt && !isIos()) {
+    prompt.prompt();
+    const choice = await prompt.userChoice;
+    window.__vakitlerInstall = null;
+    if (choice.outcome === "accepted") markInstalled();
+    else refreshInstallButton();
+    return;
+  }
+  $("install-native").hidden = true;
+  $("install-steps").hidden = false;
+  $("install-done").hidden = false;
+  $("install-dialog").showModal();
 }
 
 function openPlaceDialog() {

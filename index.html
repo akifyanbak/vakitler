@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#0e1420" />
+    <meta name="theme-color" content="#f6f3ec" />
     <meta name="description" content="Namaz vakitleri. Konumunuza göre imsak, güneş, öğle, ikindi, akşam ve yatsı. Çevrimdışı çalışır." />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -28,8 +28,8 @@
     <div class="app">
       <header class="top">
         <p class="wordmark">Vakitler</p>
-        <button type="button" class="install" id="install-button" hidden>Yükle</button>
       </header>
+      <button type="button" class="install-banner" id="install-button" hidden>Uygulamayı yükle</button>
       <button type="button" class="place place-wide" id="place-button">
         <span id="place-name">Şehir seç</span>
         <span class="place-action">Değiştir</span>
@@ -201,7 +201,7 @@
               <p>Vakitler tamamen tarayıcıda çalışır. GitHub Pages gibi statik bir sitede sunucu gerekmez.</p>
               <p>Vakit hesabı adhan kütüphanesinin Türkiye yöntemiyle yapılır. Diyanet’in ilan ettiği çizelgeden bir-iki dakika sapabilir.</p>
               <p>Hicri tarih Ümmü’l-Kurâ takvimine göredir; Diyanet’in ilan ettiği günden bir gün farklı olabilir.</p>
-              <p id="ios-note" hidden>iPhone’da ana ekrana eklemek için paylaş menüsünden “Ana Ekrana Ekle”yi seçin.</p>
+              <p id="ios-note" hidden>Uygulama ana ekrandan açıldığında Safari çubuğu görünmez.</p>
               <button type="button" class="ghost" id="reset-button">Ayarları sıfırla</button>
             </section>
           </details>
@@ -255,6 +255,25 @@
             <button type="submit" class="ghost">Bu koordinatı kullan</button>
           </form>
         </details>
+      </div>
+    </dialog>
+
+    <dialog id="install-dialog" aria-labelledby="install-title">
+      <div class="sheet">
+        <div class="sheet-head">
+          <h2 id="install-title">Ana ekrana ekle</h2>
+          <button type="button" class="iconbtn" id="install-close" aria-label="Kapat">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M6 6l12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+        <ol class="steps" id="install-steps">
+          <li>Safari’nin altındaki paylaş düğmesine bas. Kare içinde yukarı ok.</li>
+          <li>Açılan listede <strong>Ana Ekrana Ekle</strong> satırını seç.</li>
+          <li><strong>Ekle</strong>ye bas. Vakitler ikonu ana ekrana gelir ve uygulama gibi açılır.</li>
+        </ol>
+        <button type="button" class="primary big" id="install-native" hidden>Şimdi yükle</button>
+        <button type="button" class="primary big" id="install-done">Ekledim</button>
+        <button type="button" class="ghost big" id="install-later">Daha sonra</button>
       </div>
     </dialog>
 
