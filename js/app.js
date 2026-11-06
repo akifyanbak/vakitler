@@ -269,7 +269,7 @@ function bind() {
   $("install-close").addEventListener("click", () => $("install-dialog").close());
   $("install-later").addEventListener("click", () => $("install-dialog").close());
   $("install-done").addEventListener("click", () => {
-    markInstalled();
+    if ($("install-done").dataset.mark === "1") markInstalled();
     if ($("install-dialog").open) $("install-dialog").close();
   });
   $("install-native").addEventListener("click", () => installApp());
@@ -317,8 +317,179 @@ function showView(name) {
 const HOME_KEY = "vakitler.home";
 
 function isIos() {
-  return /iphone|ipad|ipod/i.test(navigator.userAgent)
+  const ua = navigator.userAgent;
+  return /iphone|ipad|ipod/i.test(ua)
     || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
+function client() {
+  const ua = navigator.userAgent;
+  const ios = isIos();
+  const android = /android/i.test(ua);
+  let browser = "other";
+  if (/Instagram/i.test(ua)) browser = "instagram";
+  else if (/FBAN|FBAV/i.test(ua)) browser = "facebook";
+  else if (/WhatsApp/i.test(ua)) browser = "whatsapp";
+  else if (/; wv\)|WebView/i.test(ua)) browser = "webview";
+  else if (/CriOS|FxiOS|EdgiOS|OPiOS/i.test(ua) || /GSA\//i.test(ua)) {
+    if (/CriOS/i.test(ua)) browser = "chrome";
+    else if (/FxiOS/i.test(ua)) browser = "firefox";
+    else if (/EdgiOS/i.test(ua)) browser = "edge";
+    else if (/OPiOS/i.test(ua)) browser = "opera";
+    else browser = "google";
+  } else if (/SamsungBrowser/i.test(ua)) browser = "samsung";
+  else if (/EdgA\/|Edg\//i.test(ua)) browser = "edge";
+  else if (/OPR\/|Opera/i.test(ua)) browser = "opera";
+  else if (/Firefox\//i.test(ua)) browser = "firefox";
+  else if (/Chrome\//i.test(ua)) browser = "chrome";
+  else if (/Safari/i.test(ua)) browser = "safari";
+  const platform = ios ? "ios" : android ? "android" : "desktop";
+  return { platform, browser };
+}
+
+function installGuide() {
+  const { platform, browser } = client();
+  const native = Boolean(window.__vakitlerInstall);
+  const inApp = ["instagram", "facebook", "whatsapp", "webview", "google"].includes(browser);
+  if (platform === "ios" && browser === "safari") {
+    return {
+      label: "Ana ekrana ekle",
+      title: "Ana ekrana ekle",
+      steps: [
+        "Safari’deki **paylaş** düğmesine bas. Kare içinde yukarı ok.",
+        "Listeden **Ana Ekrana Ekle** satırını seç.",
+        "**Ekle**’ye bas. Vakitler ikonu ana ekrana gelir.",
+      ],
+      done: "Ekledim",
+      marksInstalled: true,
+    };
+  }
+  if (platform === "ios") {
+    const name = {
+      chrome: "Chrome",
+      firefox: "Firefox",
+      edge: "Edge",
+      opera: "Opera",
+      google: "Google",
+      instagram: "Instagram",
+      facebook: "Facebook",
+      whatsapp: "WhatsApp",
+    }[browser] || "Bu uygulama";
+    return {
+      label: "Safari’de aç",
+      title: "Önce Safari’ye geç",
+      steps: [
+        `${name} ikonu ana ekrana kendi başına ekleyemez.`,
+        "Menüden veya paylaşımdan **Safari’de Aç** de.",
+        "Safari açılınca **paylaş** düğmesine bas, **Ana Ekrana Ekle**’yi seç.",
+      ],
+      done: "Anladım",
+      marksInstalled: false,
+    };
+  }
+  if (inApp) {
+    return {
+      label: "Chrome’da aç",
+      title: "Önce Chrome’a geç",
+      steps: [
+        "Bu sayfa başka bir uygulamanın içinde açıldı.",
+        "Menüden **Chrome’da aç** de.",
+        "Chrome’da **Uygulamayı yükle** veya **Ana ekrana ekle**’yi seç.",
+      ],
+      done: "Anladım",
+      marksInstalled: false,
+    };
+  }
+  if (native) {
+    const host = browser === "samsung" ? "Samsung Internet" : browser === "edge" ? "Edge" : browser === "opera" ? "Opera" : "Chrome";
+    const label = {
+      edge: "Edge’e yükle",
+      samsung: "Samsung’a yükle",
+      opera: "Opera’ya yükle",
+      chrome: "Chrome’a yükle",
+    }[browser] || "Uygulamayı yükle";
+    return {
+      label,
+      title: `${host} ile yükle`,
+      native: true,
+      steps: [`${host} kendi yükleme penceresini açar. **Yükle**’ye bas.`],
+      done: "Ekledim",
+      marksInstalled: true,
+    };
+  }
+  if (platform === "android" && browser === "firefox") {
+    return {
+      label: "Firefox’a ekle",
+      title: "Firefox’a ekle",
+      steps: [
+        "Sağ üstteki **üç nokta**ya bas.",
+        "**Yükle** veya **Ana ekrana ekle** satırını seç.",
+        "Onayla. Vakitler ikonu ana ekrana gelir.",
+      ],
+      done: "Ekledim",
+      marksInstalled: true,
+    };
+  }
+  if (platform === "android" && browser === "samsung") {
+    return {
+      label: "Samsung’a ekle",
+      title: "Ana ekrana ekle",
+      steps: [
+        "Alt menüdeki **üç çizgi**ye bas.",
+        "**Sayfa ekle**, sonra **Ana ekran**’ı seç.",
+        "**Ekle**’ye bas.",
+      ],
+      done: "Ekledim",
+      marksInstalled: true,
+    };
+  }
+  if (platform === "android") {
+    return {
+      label: "Ana ekrana ekle",
+      title: "Ana ekrana ekle",
+      steps: [
+        "Tarayıcı menüsündeki **üç nokta**ya bas.",
+        "**Ana ekrana ekle** veya **Uygulamayı yükle** satırını seç.",
+        "**Ekle**’ye bas.",
+      ],
+      done: "Ekledim",
+      marksInstalled: true,
+    };
+  }
+  if (platform === "desktop" && browser === "safari") {
+    return {
+      label: "Dock’a ekle",
+      title: "Dock’a ekle",
+      steps: [
+        "Safari’de **paylaş** düğmesine bas.",
+        "**Dock’a Ekle**’yi seç.",
+        "**Ekle**’ye bas. Vakitler Dock’ta uygulama gibi açılır.",
+      ],
+      done: "Ekledim",
+      marksInstalled: true,
+    };
+  }
+  return null;
+}
+
+function fillInstallSteps(steps) {
+  const list = $("install-steps");
+  list.replaceChildren();
+  for (const step of steps) {
+    const item = document.createElement("li");
+    const parts = step.split(/\*\*(.+?)\*\*/);
+    parts.forEach((part, index) => {
+      if (!part) return;
+      if (index % 2 === 1) {
+        const strong = document.createElement("strong");
+        strong.textContent = part;
+        item.append(strong);
+      } else {
+        item.append(part);
+      }
+    });
+    list.append(item);
+  }
 }
 
 function isStandalone() {
@@ -353,25 +524,40 @@ function refreshInstallButton() {
       /* depolama kapalı */
     }
   }
-  const offer = !isStandalone() && !homeFlag() && (isIos() || Boolean(window.__vakitlerInstall));
-  $("install-button").hidden = !offer;
+  const guide = installGuide();
+  const offer = !isStandalone() && !homeFlag() && Boolean(guide);
+  const button = $("install-button");
+  button.hidden = !offer;
+  if (guide) button.textContent = guide.label;
   document.documentElement.dataset.standalone = isStandalone() ? "true" : "false";
 }
 
 async function installApp() {
+  const guide = installGuide();
+  if (!guide) return;
   const prompt = window.__vakitlerInstall;
-  if (prompt && !isIos()) {
-    prompt.prompt();
-    const choice = await prompt.userChoice;
-    window.__vakitlerInstall = null;
-    if (choice.outcome === "accepted") markInstalled();
-    else refreshInstallButton();
-    return;
+  if (guide.native && prompt) {
+    try {
+      prompt.prompt();
+      const choice = await prompt.userChoice;
+      window.__vakitlerInstall = null;
+      if (choice.outcome === "accepted") markInstalled();
+      else refreshInstallButton();
+      return;
+    } catch {
+      window.__vakitlerInstall = null;
+    }
   }
-  $("install-native").hidden = true;
+  $("install-title").textContent = guide.title;
+  fillInstallSteps(guide.steps);
+  const done = $("install-done");
+  done.textContent = guide.done;
+  done.dataset.mark = guide.marksInstalled ? "1" : "0";
+  $("install-native").hidden = !guide.native;
+  $("install-later").hidden = !guide.marksInstalled;
   $("install-steps").hidden = false;
-  $("install-done").hidden = false;
-  $("install-dialog").showModal();
+  done.hidden = false;
+  if (!$("install-dialog").open) $("install-dialog").showModal();
 }
 
 function openPlaceDialog() {
