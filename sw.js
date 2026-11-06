@@ -1,4 +1,4 @@
-const CACHE = "vakitler-v16";
+const CACHE = "vakitler-v17";
 
 const FILES = [
   "./",
@@ -6,6 +6,7 @@ const FILES = [
   "./manifest.json",
   "./css/app.css",
   "./js/app.js",
+  "./js/mezhep.js",
   "./js/places.js",
   "./vendor/adhan.esm.js",
   "./icons/favicon.svg",

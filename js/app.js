@@ -1,14 +1,12 @@
 import {
-  CalculationMethod,
-  CalculationParameters,
   Coordinates,
   HighLatitudeRule,
-  Madhab,
   PolarCircleResolution,
   PrayerTimes,
   Qibla,
   SunnahTimes,
 } from "../vendor/adhan.esm.js";
+import { isJafariMadhab, methodNote, normalizeStoredMadhab, prayerParameters } from "./mezhep.js";
 import { FEATURED_IDS, PLACES } from "./places.js";
 
 const STORAGE_KEY = "vakitler.v1";
@@ -97,8 +95,7 @@ function loadState() {
     const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
     if (!raw || typeof raw !== "object") return base;
     const method = METHODS.some(([id]) => id === raw.method) ? raw.method : base.method;
-    let madhab = raw.madhab === "Shafi" || raw.madhab === "Hanafi" || raw.madhab === "Jafari" ? raw.madhab : base.madhab;
-    if (raw.method === "Jafari") madhab = "Jafari";
+    const madhab = normalizeStoredMadhab(raw);
     const highLatitude = Object.values(HighLatitudeRule).includes(raw.highLatitude) ? raw.highLatitude : base.highLatitude;
     const theme = raw.theme === "dark" || raw.theme === "night"
       ? "dark"
@@ -302,7 +299,7 @@ function bind() {
 }
 
 function isJafari() {
-  return state.madhab === "Jafari";
+  return isJafariMadhab(state.madhab);
 }
 
 function syncMethodControl() {
@@ -889,10 +886,7 @@ function renderToday() {
   } else {
     sunnah.hidden = true;
   }
-  const madhab = state.madhab === "Hanafi" ? "Hanefî" : "Şâfiî";
-  $("method-note").textContent = isJafari()
-    ? "Caferî · ikindi erken. İlçe merkezi veya seçtiğiniz koordinata göredir."
-    : `${methodLabel(state.method)} · ${madhab}. İlçe merkezi veya seçtiğiniz koordinata göredir.`;
+  $("method-note").textContent = methodNote(state.madhab, methodLabel(state.method));
   renderHero();
 }
 
@@ -1133,10 +1127,7 @@ function compute(place, parts) {
   if (calcCache.has(key)) return calcCache.get(key);
   let pack = null;
   try {
-    const params = isJafari()
-      ? new CalculationParameters("Jafari", 16, 14, 0, 4)
-      : CalculationMethod[state.method]();
-    params.madhab = state.madhab === "Hanafi" ? Madhab.Hanafi : Madhab.Shafi;
+    const params = prayerParameters(state.madhab, state.method);
     params.highLatitudeRule = state.highLatitude;
     params.polarCircleResolution = PolarCircleResolution.AqrabBalad;
     for (const name of Object.keys(state.adjustments)) {
