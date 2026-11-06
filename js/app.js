@@ -217,6 +217,7 @@ function bind() {
   $("next-month").addEventListener("click", () => shiftMonth(1));
   $("copy-button").addEventListener("click", copyTimes);
   $("share-button").addEventListener("click", shareTimes);
+  $("share-app").addEventListener("click", shareApp);
   $("method-select").addEventListener("change", () => {
     state.method = $("method-select").value;
     $("method-hint").textContent = methodHint(state.method);
@@ -1184,6 +1185,25 @@ async function shareTimes() {
     await navigator.share({ title: "Vakitler", text });
   } catch {
     /* paylaşım iptal */
+  }
+}
+
+async function shareApp() {
+  const url = appBase().href;
+  const text = "Reklamsız namaz vakitleri. Büyük yazıyla, ana ekrana eklenince uygulama gibi açılır.";
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: "Vakitler", text, url });
+      return;
+    } catch (error) {
+      if (error?.name === "AbortError") return;
+    }
+  }
+  try {
+    await navigator.clipboard.writeText(`${text}\n${url}`);
+    toast("Bağlantı kopyalandı");
+  } catch {
+    toast(url);
   }
 }
 

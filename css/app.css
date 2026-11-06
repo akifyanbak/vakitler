@@ -730,6 +730,7 @@ select, input[type="search"], input[type="number"], input[type="text"], #tz-inpu
 
 .about p { margin: 0 0 0.7rem; }
 #reset-button { margin-top: 0.4rem; }
+#share-app { margin-top: 0.15rem; }
 
 .tabs {
   position: fixed;
