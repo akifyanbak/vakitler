@@ -1210,11 +1210,19 @@ async function shareApp() {
 async function onRemindChange() {
   const value = $("remind-select").value;
   if (value !== "off") {
+    if (isIos() && !isStandalone()) {
+      $("remind-select").value = "off";
+      state.remind = "off";
+      $("remind-note").textContent = iosNotifyNote();
+      save();
+      armReminder();
+      return;
+    }
     const allowed = await ensureNotify();
     if (!allowed) {
       $("remind-select").value = "off";
       state.remind = "off";
-      $("remind-note").textContent = "Bildirim izni yok. Telefon ayarından Vakitler’e izin ver.";
+      $("remind-note").textContent = notifyDeniedNote();
       save();
       armReminder();
       return;
@@ -1227,11 +1235,21 @@ async function onRemindChange() {
   armReminder();
 }
 
+function iosNotifyNote() {
+  return "iPhone sekmede izin sormaz. Ana ekrandaki Vakitler ikonunu aç, oradan Hatırlatma’yı seç.";
+}
+
+function notifyDeniedNote() {
+  if (!("Notification" in window)) return "Bu tarayıcı bildirim gönderemiyor.";
+  if (isIos() && !isStandalone()) return iosNotifyNote();
+  return "Bildirim izni kapalı. Ayarlar → Bildirimler → Vakitler bölümünden aç.";
+}
+
 function remindNote() {
   if (state.remind === "off") return "Kapalı. Vakit girince haber vermek için aç.";
   if (!("Notification" in window)) return "Bu tarayıcı bildirim gönderemiyor.";
-  if (Notification.permission === "denied") return "Bildirim izni yok. Telefon ayarından Vakitler’e izin ver.";
-  if (isIos() && !isStandalone()) return "İzin tamam. iPhone’da bildirim için uygulamayı ana ekrana ekle.";
+  if (Notification.permission === "denied") return notifyDeniedNote();
+  if (isIos() && !isStandalone()) return iosNotifyNote();
   if (state.remind === "0") return "Vakit girince o vakti bildirir. Uygulama açıkken çalışır.";
   return "Vakit gelmeden önce bildirir. Uygulama açıkken çalışır.";
 }
