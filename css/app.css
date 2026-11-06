@@ -700,6 +700,8 @@ body:has(#install-button:not([hidden])) .times li {
   margin: 0 0 0.85rem;
 }
 
+select:disabled { opacity: 0.55; }
+
 select, input[type="search"], input[type="number"], input[type="text"], #tz-input {
   font: inherit;
   font-size: 1.15rem;

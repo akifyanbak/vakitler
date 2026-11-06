@@ -1,5 +1,6 @@
 import {
   CalculationMethod,
+  CalculationParameters,
   Coordinates,
   HighLatitudeRule,
   Madhab,
@@ -23,6 +24,7 @@ const NAMES = {
 };
 const METHODS = [
   ["Turkey", "Diyanet (Türkiye)", "İmsak 18°, yatsı 17°. Türkiye için Diyanet’e yakın bir hesaptır; resmi çizelgeden birkaç dakika sapabilir."],
+  ["Jafari", "Caferî", "İmsak 16°, akşam güneş 4° batınca, yatsı 14°. İkindi erken hesaplanır. Bir cami cetvelinden birkaç dakika sapabilir."],
   ["MuslimWorldLeague", "Müslüman Dünya Birliği", "İmsak 18°, yatsı 17°."],
   ["Egyptian", "Mısır", "İmsak 19,5°, yatsı 17,5°."],
   ["Karachi", "Karaçi", "İmsak 18°, yatsı 18°."],
@@ -183,6 +185,7 @@ function syncForm() {
   $("latitude-select").value = state.highLatitude;
   $("remind-select").value = state.remind;
   $("method-hint").textContent = methodHint(state.method);
+  syncMadhabControl();
   for (const input of document.querySelectorAll("[data-adj]")) {
     input.value = String(state.adjustments[input.dataset.adj] ?? 0);
   }
@@ -221,6 +224,7 @@ function bind() {
   $("method-select").addEventListener("change", () => {
     state.method = $("method-select").value;
     $("method-hint").textContent = methodHint(state.method);
+    syncMadhabControl();
     save();
     render();
   });
@@ -296,6 +300,20 @@ function bind() {
     if (event.key === "ArrowLeft") shiftDay(-1);
     if (event.key === "ArrowRight") shiftDay(1);
   });
+}
+
+function isJafari() {
+  return state.method === "Jafari";
+}
+
+function syncMadhabControl() {
+  const jafari = isJafari();
+  $("madhab-select").disabled = jafari;
+  const hint = $("madhab-hint");
+  hint.hidden = !jafari;
+  hint.textContent = jafari
+    ? "Bu yöntemde ikindi erken kalır. Başka bir yönteme geçince Hanefî veya Şâfiî seçimin geri gelir."
+    : "";
 }
 
 function methodHint(id) {
@@ -869,7 +887,7 @@ function renderToday() {
   } else {
     sunnah.hidden = true;
   }
-  const madhab = state.madhab === "Hanafi" ? "Hanefî" : "Şâfiî";
+  const madhab = isJafari() ? "ikindi erken" : state.madhab === "Hanafi" ? "Hanefî" : "Şâfiî";
   $("method-note").textContent = `${methodLabel(state.method)} · ${madhab}. İlçe merkezi veya seçtiğiniz koordinata göredir.`;
   renderHero();
 }
@@ -1111,8 +1129,10 @@ function compute(place, parts) {
   if (calcCache.has(key)) return calcCache.get(key);
   let pack = null;
   try {
-    const params = CalculationMethod[state.method]();
-    params.madhab = state.madhab === "Hanafi" ? Madhab.Hanafi : Madhab.Shafi;
+    const params = isJafari()
+      ? new CalculationParameters("Jafari", 16, 14, 0, 4)
+      : CalculationMethod[state.method]();
+    params.madhab = isJafari() || state.madhab !== "Hanafi" ? Madhab.Shafi : Madhab.Hanafi;
     params.highLatitudeRule = state.highLatitude;
     params.polarCircleResolution = PolarCircleResolution.AqrabBalad;
     for (const name of Object.keys(state.adjustments)) {
