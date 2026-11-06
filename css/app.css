@@ -97,6 +97,22 @@
   --sans: Outfit, "Avenir Next", "Segoe UI", sans-serif;
 }
 
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg0: #141614;
+  --bg1: #141614;
+  --bg2: #141614;
+  --accent: #9ddec8;
+  --accent-ink: #06241e;
+  --accent-soft: rgba(157, 222, 200, 0.18);
+  --ink: #f6f3ec;
+  --muted: #e7e2d8;
+  --faint: #c9c3b6;
+  --line: rgba(246, 243, 236, 0.28);
+  --chip: #222522;
+  --nav: #0e100e;
+}
+
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 
@@ -139,7 +155,7 @@ body {
 .app {
   width: min(32rem, 100%);
   margin: 0 auto;
-  padding: calc(0.9rem + env(safe-area-inset-top)) 1rem calc(6.6rem + env(safe-area-inset-bottom));
+  padding: calc(0.45rem + env(safe-area-inset-top)) 1rem calc(6.6rem + env(safe-area-inset-bottom));
 }
 
 .top {
@@ -156,6 +172,48 @@ body {
   font-size: 1.55rem;
   letter-spacing: -0.03em;
 }
+
+.theme-toggle {
+  flex: none;
+  min-height: 2.8rem;
+  padding: 0.35rem 0.85rem;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--chip);
+  color: var(--ink);
+  font: inherit;
+  font-size: 1.05rem;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.theme-choices {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.45rem;
+}
+
+.theme-choices button {
+  min-height: 3.3rem;
+  padding: 0.4rem 0.2rem;
+  border: 2px solid var(--ink);
+  border-radius: 14px;
+  background: var(--chip);
+  color: var(--ink);
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.theme-choices button[aria-checked="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.theme-choices + .hint { margin-top: 0.7rem; }
 
 .top-actions {
   display: flex;
@@ -205,13 +263,28 @@ body {
   cursor: pointer;
 }
 
-.install {
-  border: 1px solid var(--line);
-  background: transparent;
-  color: var(--accent);
-  padding: 0.4rem 0.75rem;
-  font-size: 0.88rem;
+.install-banner {
+  display: block;
+  width: 100%;
+  margin-top: 0.75rem;
+  min-height: 3.3rem;
+  border: 0;
+  border-radius: 16px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font: inherit;
+  font-size: 1.2rem;
+  font-weight: 700;
+  cursor: pointer;
 }
+.steps {
+  margin: 0.4rem 0 1rem;
+  padding-left: 1.3rem;
+  font-size: 1.15rem;
+}
+.steps li { margin: 0.75rem 0; }
+.steps li strong { color: var(--ink); }
+#install-later { margin-top: 0.55rem; }
 
 .ghost {
   border: 1px solid var(--line);
@@ -396,8 +469,19 @@ body {
 
 .times {
   list-style: none;
-  margin: 1.3rem 0 0;
+  margin: 1rem 0 0;
   padding: 0;
+}
+
+body:has(#install-button:not([hidden])) .install-banner { margin-top: 0.4rem; min-height: 3rem; }
+body:has(#install-button:not([hidden])) .place { margin-top: 0.4rem; }
+body:has(#install-button:not([hidden])) .dateline { margin-top: 0.35rem; }
+body:has(#install-button:not([hidden])) .daynav { margin-top: 0.35rem; }
+body:has(#install-button:not([hidden])) .times { margin-top: 0.5rem; }
+body:has(#install-button:not([hidden])) .times li {
+  min-height: 2.5rem;
+  padding-top: 0.18rem;
+  padding-bottom: 0.18rem;
 }
 
 .times li {

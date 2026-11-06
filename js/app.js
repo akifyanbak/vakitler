@@ -35,15 +35,7 @@ const METHODS = [
   ["Tehran", "Tahran", "İmsak 17,7°, akşam 4,5°, yatsı 14°."],
   ["MoonsightingCommittee", "Moonsighting Committee", "İmsak ve yatsı 18°. Yüksek enlemlerde mevsim düzeltmesi uygular."],
 ];
-const PALETTES = {
-  fajr: { scheme: "dark", bg0: "#1c2230", bg1: "#4a3a3a", bg2: "#8a6248", accent: "#f0c7a0", accentInk: "#2a2118", accentSoft: "rgba(240,199,160,.16)", ink: "#f8f2ea", muted: "#d2c4b8", faint: "rgba(248,242,234,.46)", line: "rgba(248,242,234,.14)", chip: "rgba(255,255,255,.06)", nav: "rgba(22,20,24,.82)" },
-  sunrise: { scheme: "dark", bg0: "#2a211c", bg1: "#7a4632", bg2: "#e0a06a", accent: "#ffd7a8", accentInk: "#2a2118", accentSoft: "rgba(255,215,168,.16)", ink: "#fff6ea", muted: "#f0d7c4", faint: "rgba(255,246,234,.5)", line: "rgba(255,246,234,.16)", chip: "rgba(255,255,255,.06)", nav: "rgba(32,22,18,.82)" },
-  dhuhr: { scheme: "light", bg0: "#e7e2d6", bg1: "#c5d0c6", bg2: "#f3ecdf", accent: "#0e5b50", accentInk: "#f4efe4", accentSoft: "rgba(14,91,80,.12)", ink: "#1b1914", muted: "#5c574e", faint: "rgba(27,25,20,.45)", line: "rgba(27,25,20,.12)", chip: "rgba(255,255,255,.46)", nav: "rgba(231,226,214,.9)" },
-  asr: { scheme: "light", bg0: "#f0e2c8", bg1: "#e7c49a", bg2: "#f6edd9", accent: "#8a3e1d", accentInk: "#fff6ea", accentSoft: "rgba(138,62,29,.12)", ink: "#2a1c12", muted: "#6f5644", faint: "rgba(42,28,18,.48)", line: "rgba(42,28,18,.12)", chip: "rgba(255,252,245,.5)", nav: "rgba(240,226,200,.9)" },
-  maghrib: { scheme: "dark", bg0: "#241820", bg1: "#7a3040", bg2: "#c4623a", accent: "#ffc7a3", accentInk: "#2a1612", accentSoft: "rgba(255,199,163,.16)", ink: "#fff3ea", muted: "#e4c8bc", faint: "rgba(255,243,234,.5)", line: "rgba(255,243,234,.14)", chip: "rgba(255,255,255,.06)", nav: "rgba(28,16,22,.82)" },
-  isha: { scheme: "dark", bg0: "#0e1420", bg1: "#1a2740", bg2: "#243656", accent: "#e4c27a", accentInk: "#2a2118", accentSoft: "rgba(228,194,122,.16)", ink: "#f4efe4", muted: "#b7c0d0", faint: "rgba(244,239,228,.72)", line: "rgba(244,239,228,.12)", chip: "rgba(255,255,255,.06)", nav: "rgba(10,14,22,.84)" },
-  plain: { scheme: "light", bg0: "#f6f3ec", bg1: "#f6f3ec", bg2: "#f6f3ec", accent: "#0c3d34", accentInk: "#ffffff", accentSoft: "rgba(12,61,52,.14)", ink: "#141414", muted: "#2c2c2c", faint: "#3f3f3f", line: "rgba(20,20,20,.18)", chip: "#ffffff", nav: "#fffdf8" },
-};
+const THEME_COLOR = { light: "#f6f3ec", dark: "#141614" };
 
 const byId = new Map(PLACES.map((place) => [place.id, place]));
 const calcCache = new Map();
@@ -63,9 +55,7 @@ function init() {
   syncForm();
   bind();
   if ("share" in navigator) $("share-button").hidden = false;
-  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
-  const standalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone;
-  if (ios && !standalone) $("ios-note").hidden = false;
+  refreshInstallButton();
   if (typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function") {
     $("compass-permit").hidden = false;
   }
@@ -90,7 +80,7 @@ function loadState() {
     method: "Turkey",
     madhab: "Hanafi",
     highLatitude: HighLatitudeRule.MiddleOfTheNight,
-    theme: "auto",
+    theme: "light",
     remind: "off",
     adjustments: freshAdjustments(),
     selected: null,
@@ -104,7 +94,11 @@ function loadState() {
     const method = METHODS.some(([id]) => id === raw.method) ? raw.method : base.method;
     const madhab = raw.madhab === "Shafi" || raw.madhab === "Hanafi" ? raw.madhab : base.madhab;
     const highLatitude = Object.values(HighLatitudeRule).includes(raw.highLatitude) ? raw.highLatitude : base.highLatitude;
-    const theme = ["auto", "night", "day"].includes(raw.theme) ? raw.theme : base.theme;
+    const theme = raw.theme === "dark" || raw.theme === "night"
+      ? "dark"
+      : raw.theme === "system"
+        ? "system"
+        : "light";
     const remind = ["off", "0", "10", "15"].includes(raw.remind) ? raw.remind : base.remind;
     const adjustments = freshAdjustments();
     for (const key of Object.keys(adjustments)) {
@@ -183,7 +177,6 @@ function syncForm() {
   $("method-select").value = state.method;
   $("madhab-select").value = state.madhab;
   $("latitude-select").value = state.highLatitude;
-  $("theme-select").value = state.theme;
   $("remind-select").value = state.remind;
   $("method-hint").textContent = methodHint(state.method);
   for (const input of document.querySelectorAll("[data-adj]")) {
@@ -238,10 +231,14 @@ function bind() {
     save();
     render();
   });
-  $("theme-select").addEventListener("change", () => {
-    state.theme = $("theme-select").value;
-    save();
-    render();
+  $("theme-toggle").addEventListener("click", () => {
+    setTheme(resolvedTheme() === "dark" ? "light" : "dark");
+  });
+  document.querySelectorAll("button[data-theme]").forEach((button) => {
+    button.addEventListener("click", () => setTheme(button.dataset.theme));
+  });
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+    if (state.theme === "system") applyPalette();
   });
   $("remind-select").addEventListener("change", onRemindChange);
   document.querySelectorAll("[data-adj]").forEach((input) => {
@@ -269,14 +266,25 @@ function bind() {
   });
   $("compass-permit").addEventListener("click", enableCompass);
   $("install-button").addEventListener("click", installApp);
+  $("install-close").addEventListener("click", () => $("install-dialog").close());
+  $("install-later").addEventListener("click", () => $("install-dialog").close());
+  $("install-done").addEventListener("click", () => {
+    markInstalled();
+    if ($("install-dialog").open) $("install-dialog").close();
+  });
+  $("install-native").addEventListener("click", () => installApp());
+  $("install-dialog").addEventListener("click", (event) => {
+    if (event.target === $("install-dialog")) $("install-dialog").close();
+  });
   window.addEventListener("beforeinstallprompt", (event) => {
     event.preventDefault();
     window.__vakitlerInstall = event;
-    $("install-button").hidden = false;
+    refreshInstallButton();
   });
   window.addEventListener("appinstalled", () => {
-    $("install-button").hidden = true;
+    markInstalled();
   });
+  window.matchMedia("(display-mode: standalone)").addEventListener("change", refreshInstallButton);
   window.addEventListener("online", updateOnline);
   window.addEventListener("offline", updateOnline);
   document.addEventListener("keydown", (event) => {
@@ -306,13 +314,64 @@ function showView(name) {
   if (name === "qibla") watchCompass();
 }
 
+const HOME_KEY = "vakitler.home";
+
+function isIos() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent)
+    || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
+function isStandalone() {
+  return window.matchMedia("(display-mode: standalone)").matches
+    || window.matchMedia("(display-mode: fullscreen)").matches
+    || navigator.standalone === true;
+}
+
+function markInstalled() {
+  try {
+    localStorage.setItem(HOME_KEY, "1");
+  } catch {
+    /* depolama kapalı */
+  }
+  window.__vakitlerInstall = null;
+  refreshInstallButton();
+}
+
+function homeFlag() {
+  try {
+    return localStorage.getItem(HOME_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function refreshInstallButton() {
+  if (isStandalone()) {
+    try {
+      localStorage.setItem(HOME_KEY, "1");
+    } catch {
+      /* depolama kapalı */
+    }
+  }
+  const offer = !isStandalone() && !homeFlag() && (isIos() || Boolean(window.__vakitlerInstall));
+  $("install-button").hidden = !offer;
+  document.documentElement.dataset.standalone = isStandalone() ? "true" : "false";
+}
+
 async function installApp() {
   const prompt = window.__vakitlerInstall;
-  if (!prompt) return;
-  prompt.prompt();
-  await prompt.userChoice;
-  window.__vakitlerInstall = null;
-  $("install-button").hidden = true;
+  if (prompt && !isIos()) {
+    prompt.prompt();
+    const choice = await prompt.userChoice;
+    window.__vakitlerInstall = null;
+    if (choice.outcome === "accepted") markInstalled();
+    else refreshInstallButton();
+    return;
+  }
+  $("install-native").hidden = true;
+  $("install-steps").hidden = false;
+  $("install-done").hidden = false;
+  $("install-dialog").showModal();
 }
 
 function openPlaceDialog() {
@@ -507,7 +566,7 @@ function shiftMonth(amount) {
 
 function render() {
   ensureSelection();
-  applyPalette(activePalette());
+  applyPalette();
   $("place-name").textContent = state.place ? state.place.name : "Şehir seç";
   document.querySelector(".place-action").textContent = state.place ? "Değiştir" : "Seç";
   document.querySelectorAll("[data-need-place]").forEach((element) => {
@@ -716,25 +775,32 @@ function updateLive() {
     render();
     return;
   }
-  const palette = paletteName();
-  if (palette !== state.appliedPalette) {
-    applyPalette(activePalette());
-    renderToday();
-    renderMonth();
-  } else {
-    renderHero();
-  }
+  if (resolvedTheme() !== state.appliedPalette) applyPalette();
+  renderHero();
   checkReminders();
 }
 
-function paletteName() {
-  if (state.theme === "night") return "night";
-  return "plain";
+function resolvedTheme() {
+  if (state.theme === "dark") return "dark";
+  if (state.theme === "light") return "light";
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
-function activePalette() {
-  if (state.theme === "night") return PALETTES.isha;
-  return PALETTES.plain;
+function setTheme(theme) {
+  state.theme = theme;
+  save();
+  applyPalette();
+}
+
+function syncThemeControls() {
+  const dark = resolvedTheme() === "dark";
+  const toggle = $("theme-toggle");
+  toggle.textContent = dark ? "Aydınlık" : "Karanlık";
+  toggle.setAttribute("aria-pressed", dark ? "true" : "false");
+  toggle.setAttribute("aria-label", dark ? "Aydınlık temaya geç" : "Karanlık temaya geç");
+  for (const button of document.querySelectorAll("button[data-theme]")) {
+    button.setAttribute("aria-checked", button.dataset.theme === state.theme ? "true" : "false");
+  }
 }
 
 function currentPrayerKey() {
@@ -757,27 +823,15 @@ function currentPrayerKey() {
   return key;
 }
 
-function applyPalette(palette) {
-  state.appliedPalette = paletteName();
+function applyPalette() {
+  const name = resolvedTheme();
+  state.appliedPalette = name;
   const root = document.documentElement;
-  root.style.colorScheme = palette.scheme;
-  const map = {
-    "--bg0": palette.bg0,
-    "--bg1": palette.bg1,
-    "--bg2": palette.bg2,
-    "--accent": palette.accent,
-    "--accent-ink": palette.accentInk,
-    "--accent-soft": palette.accentSoft,
-    "--ink": palette.ink,
-    "--muted": palette.muted,
-    "--faint": palette.faint,
-    "--line": palette.line,
-    "--chip": palette.chip,
-    "--nav": palette.nav,
-  };
-  for (const [key, value] of Object.entries(map)) root.style.setProperty(key, value);
+  root.dataset.theme = name;
+  root.style.colorScheme = name;
   const theme = document.querySelector('meta[name="theme-color"]');
-  if (theme) theme.setAttribute("content", palette.bg0);
+  if (theme) theme.setAttribute("content", THEME_COLOR[name]);
+  syncThemeControls();
 }
 
 function compute(place, parts) {
