@@ -2,7 +2,7 @@
 
 Namaz vakitleri için kurulabilir, çevrimdışı çalışan bir PWA. Hesap tarayıcıda yapılır; GitHub Pages üzerinde sunucu gerekmez.
 
-Site: [https://akifyanbak.github.io/vakitler/](https://akifyanbak.github.io/vakitler/)
+Uygulama: [https://akifyanbak.github.io/vakitler/](https://akifyanbak.github.io/vakitler/)
 
 ## GitHub Pages
 
