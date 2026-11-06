@@ -357,7 +357,24 @@ function installGuide() {
       title: "Ana ekrana ekle",
       steps: [
         "Safari’deki **paylaş** düğmesine bas. Kare içinde yukarı ok.",
-        "Listeden **Ana Ekrana Ekle** satırını seç.",
+        "Listeden **Ana Ekrana Ekle** satırını seç. Telefon İngilizceyse **Add to Home Screen** yazar.",
+        "**Ekle**’ye bas. Vakitler ikonu ana ekrana gelir.",
+      ],
+      done: "Ekledim",
+      marksInstalled: true,
+    };
+  }
+  if (platform === "ios" && ["chrome", "edge", "firefox", "opera"].includes(browser)) {
+    const name = { chrome: "Chrome", edge: "Edge", firefox: "Firefox", opera: "Opera" }[browser];
+    const share = browser === "chrome"
+      ? "Chrome’da adres çubuğunun sağındaki **paylaş** düğmesine bas. Kare içinde yukarı ok."
+      : `${name} içindeki **paylaş** düğmesine bas. Kare içinde yukarı ok.`;
+    return {
+      label: "Ana ekrana ekle",
+      title: "Ana ekrana ekle",
+      steps: [
+        share,
+        "Listeden **Ana Ekrana Ekle** satırını seç. Telefon İngilizceyse **Add to Home Screen** yazar.",
         "**Ekle**’ye bas. Vakitler ikonu ana ekrana gelir.",
       ],
       done: "Ekledim",
@@ -366,22 +383,18 @@ function installGuide() {
   }
   if (platform === "ios") {
     const name = {
-      chrome: "Chrome",
-      firefox: "Firefox",
-      edge: "Edge",
-      opera: "Opera",
       google: "Google",
       instagram: "Instagram",
       facebook: "Facebook",
       whatsapp: "WhatsApp",
     }[browser] || "Bu uygulama";
     return {
-      label: "Safari’de aç",
-      title: "Önce Safari’ye geç",
+      label: "Tarayıcıda aç",
+      title: "Önce tarayıcıda aç",
       steps: [
-        `${name} ikonu ana ekrana kendi başına ekleyemez.`,
-        "Menüden veya paylaşımdan **Safari’de Aç** de.",
-        "Safari açılınca **paylaş** düğmesine bas, **Ana Ekrana Ekle**’yi seç.",
+        `${name} içinden ana ekrana eklenemez.`,
+        "Menüden **Safari’de Aç** veya **Chrome’da Aç** de.",
+        "Açılınca **paylaş** düğmesine bas, **Ana Ekrana Ekle**’yi seç.",
       ],
       done: "Anladım",
       marksInstalled: false,
