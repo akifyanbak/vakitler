@@ -10,6 +10,17 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Vakitler" />
     <title>Vakitler</title>
+    <script>
+      (function () {
+        try {
+          var raw = JSON.parse(localStorage.getItem("vakitler.v1") || "null");
+          var theme = raw && raw.theme;
+          var dark = theme === "dark" || theme === "night" ||
+            (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+          if (dark) document.documentElement.dataset.theme = "dark";
+        } catch (e) {}
+      })();
+    </script>
     <link rel="manifest" href="manifest.json" />
     <link rel="icon" href="icons/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
@@ -28,6 +39,7 @@
     <div class="app">
       <header class="top">
         <p class="wordmark">Vakitler</p>
+        <button type="button" class="theme-toggle" id="theme-toggle" aria-pressed="false">Karanlık</button>
       </header>
       <button type="button" class="install-banner" id="install-button" hidden>Uygulamayı yükle</button>
       <button type="button" class="place place-wide" id="place-button">
@@ -133,6 +145,16 @@
 
         <section id="view-settings" hidden>
           <section class="group">
+            <h2>Görünüm</h2>
+            <div class="theme-choices" role="radiogroup" aria-label="Görünüm">
+              <button type="button" role="radio" data-theme="light" aria-checked="true">Aydınlık</button>
+              <button type="button" role="radio" data-theme="dark" aria-checked="false">Karanlık</button>
+              <button type="button" role="radio" data-theme="system" aria-checked="false">Otomatik</button>
+            </div>
+            <p class="hint">Otomatik, telefonun aydınlık veya karanlık ayarını kullanır.</p>
+          </section>
+
+          <section class="group">
             <h2>İkindi</h2>
             <label class="field">Mezhep
               <select id="madhab-select">
@@ -155,17 +177,6 @@
                   <option value="middleofthenight">Gecenin ortası</option>
                   <option value="seventhofthenight">Gecenin yedide biri</option>
                   <option value="twilightangle">Alacakaranlık açısı</option>
-                </select>
-              </label>
-            </section>
-
-            <section class="group">
-              <h2>Görünüm</h2>
-              <label class="field">Tema
-                <select id="theme-select">
-                  <option value="auto">Sade</option>
-                  <option value="day">Gündüz</option>
-                  <option value="night">Gece</option>
                 </select>
               </label>
             </section>
