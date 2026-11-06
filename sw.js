@@ -1,4 +1,4 @@
-const CACHE = "vakitler-v15";
+const CACHE = "vakitler-v16";
 
 const FILES = [
   "./",

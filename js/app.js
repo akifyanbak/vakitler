@@ -24,7 +24,6 @@ const NAMES = {
 };
 const METHODS = [
   ["Turkey", "Diyanet (Türkiye)", "İmsak 18°, yatsı 17°. Türkiye için Diyanet’e yakın bir hesaptır; resmi çizelgeden birkaç dakika sapabilir."],
-  ["Jafari", "Caferî", "İmsak 16°, akşam güneş 4° batınca, yatsı 14°. İkindi erken hesaplanır. Bir cami cetvelinden birkaç dakika sapabilir."],
   ["MuslimWorldLeague", "Müslüman Dünya Birliği", "İmsak 18°, yatsı 17°."],
   ["Egyptian", "Mısır", "İmsak 19,5°, yatsı 17,5°."],
   ["Karachi", "Karaçi", "İmsak 18°, yatsı 18°."],
@@ -98,7 +97,8 @@ function loadState() {
     const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
     if (!raw || typeof raw !== "object") return base;
     const method = METHODS.some(([id]) => id === raw.method) ? raw.method : base.method;
-    const madhab = raw.madhab === "Shafi" || raw.madhab === "Hanafi" ? raw.madhab : base.madhab;
+    let madhab = raw.madhab === "Shafi" || raw.madhab === "Hanafi" || raw.madhab === "Jafari" ? raw.madhab : base.madhab;
+    if (raw.method === "Jafari") madhab = "Jafari";
     const highLatitude = Object.values(HighLatitudeRule).includes(raw.highLatitude) ? raw.highLatitude : base.highLatitude;
     const theme = raw.theme === "dark" || raw.theme === "night"
       ? "dark"
@@ -184,8 +184,7 @@ function syncForm() {
   $("madhab-select").value = state.madhab;
   $("latitude-select").value = state.highLatitude;
   $("remind-select").value = state.remind;
-  $("method-hint").textContent = methodHint(state.method);
-  syncMadhabControl();
+  syncMethodControl();
   for (const input of document.querySelectorAll("[data-adj]")) {
     input.value = String(state.adjustments[input.dataset.adj] ?? 0);
   }
@@ -223,13 +222,13 @@ function bind() {
   $("share-app").addEventListener("click", shareApp);
   $("method-select").addEventListener("change", () => {
     state.method = $("method-select").value;
-    $("method-hint").textContent = methodHint(state.method);
-    syncMadhabControl();
+    syncMethodControl();
     save();
     render();
   });
   $("madhab-select").addEventListener("change", () => {
     state.madhab = $("madhab-select").value;
+    syncMethodControl();
     save();
     render();
   });
@@ -303,16 +302,19 @@ function bind() {
 }
 
 function isJafari() {
-  return state.method === "Jafari";
+  return state.madhab === "Jafari";
 }
 
-function syncMadhabControl() {
+function syncMethodControl() {
   const jafari = isJafari();
-  $("madhab-select").disabled = jafari;
+  $("method-select").disabled = jafari;
+  $("method-hint").textContent = jafari
+    ? "Caferî kendi açılarını kullanır. Başka bir mezhebe geçince seçtiğin hesap yöntemi geri gelir."
+    : methodHint(state.method);
   const hint = $("madhab-hint");
   hint.hidden = !jafari;
   hint.textContent = jafari
-    ? "Bu yöntemde ikindi erken kalır. Başka bir yönteme geçince Hanefî veya Şâfiî seçimin geri gelir."
+    ? "İmsak 16°, akşam güneş 4° batınca, yatsı 14°. İkindi erken hesaplanır."
     : "";
 }
 
@@ -887,8 +889,10 @@ function renderToday() {
   } else {
     sunnah.hidden = true;
   }
-  const madhab = isJafari() ? "ikindi erken" : state.madhab === "Hanafi" ? "Hanefî" : "Şâfiî";
-  $("method-note").textContent = `${methodLabel(state.method)} · ${madhab}. İlçe merkezi veya seçtiğiniz koordinata göredir.`;
+  const madhab = state.madhab === "Hanafi" ? "Hanefî" : "Şâfiî";
+  $("method-note").textContent = isJafari()
+    ? "Caferî · ikindi erken. İlçe merkezi veya seçtiğiniz koordinata göredir."
+    : `${methodLabel(state.method)} · ${madhab}. İlçe merkezi veya seçtiğiniz koordinata göredir.`;
   renderHero();
 }
 
@@ -1132,7 +1136,7 @@ function compute(place, parts) {
     const params = isJafari()
       ? new CalculationParameters("Jafari", 16, 14, 0, 4)
       : CalculationMethod[state.method]();
-    params.madhab = isJafari() || state.madhab !== "Hanafi" ? Madhab.Shafi : Madhab.Hanafi;
+    params.madhab = state.madhab === "Hanafi" ? Madhab.Hanafi : Madhab.Shafi;
     params.highLatitudeRule = state.highLatitude;
     params.polarCircleResolution = PolarCircleResolution.AqrabBalad;
     for (const name of Object.keys(state.adjustments)) {
