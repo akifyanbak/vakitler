@@ -1,4 +1,4 @@
-const CACHE = "vakitler-v10";
+const CACHE = "vakitler-v11";
 
 const FILES = [
   "./",
@@ -51,6 +51,23 @@ self.addEventListener("activate", (event) => {
       const keys = await caches.keys();
       await Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key)));
       await self.clients.claim();
+    })(),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  event.waitUntil(
+    (async () => {
+      const all = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      const scope = new URL("./", self.registration.scope).href;
+      for (const client of all) {
+        if (client.url.startsWith(scope) && "focus" in client) {
+          await client.focus();
+          return;
+        }
+      }
+      if (self.clients.openWindow) await self.clients.openWindow("./");
     })(),
   );
 });
