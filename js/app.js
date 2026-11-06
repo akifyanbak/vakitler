@@ -536,8 +536,8 @@ function choosePlace(place) {
   state.place = place;
   state.pinned = false;
   state.recents = [place, ...state.recents.filter((item) => item.id !== place.id)].slice(0, 6);
-  ensureSelection();
   save();
+  ensureSelection();
   if ($("place-dialog").open) $("place-dialog").close();
   render();
 }

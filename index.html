@@ -289,6 +289,24 @@
     </dialog>
 
     <p class="toast" id="toast" hidden role="status"></p>
+    <script>
+      (function () {
+        try {
+          var raw = JSON.parse(localStorage.getItem("vakitler.v1") || "null");
+          var place = raw && raw.place;
+          if (!place || typeof place.name !== "string" || !place.name) return;
+          if (typeof place.lat !== "number" || typeof place.lon !== "number") return;
+          var name = document.getElementById("place-name");
+          if (name) name.textContent = place.name;
+          var action = document.querySelector(".place-action");
+          if (action) action.textContent = "Değiştir";
+          var welcome = document.getElementById("welcome");
+          if (welcome) welcome.hidden = true;
+          var today = document.getElementById("today-body");
+          if (today) today.hidden = false;
+        } catch (e) {}
+      })();
+    </script>
     <script type="module" src="js/app.js"></script>
   </body>
 </html>
