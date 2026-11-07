@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="tr">
+  <head>
+    <!-- Google Tag Manager -->
+    <script async src="https://www.googletagmanager.com/gtm.js?id=GTM-KK6Z7PJ4"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+    </script>
+    <!-- End Google Tag Manager -->
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#f6f3ec" />
+    <meta name="description" content="Namaz vakitleri. Konumunuza göre imsak, güneş, öğle, ikindi, akşam ve yatsı. Çevrimdışı çalışır." />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Vakitler deneme" />
+    <title>Vakitler deneme</title>
+    <script>
+      (function () {
+        try {
+          var store = location.pathname.indexOf("/dev/") !== -1 ? "vakitler.dev" : "vakitler.v1";
+          var raw = JSON.parse(localStorage.getItem(store) || "null");
+          var theme = raw && raw.theme;
+          var dark = theme === "dark" || theme === "night" ||
+            (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+          if (dark) document.documentElement.dataset.theme = "dark";
+        } catch (e) {}
+      })();
+    </script>
+    <link rel="manifest" href="manifest.json" />
+    <link rel="icon" href="icons/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+    <link rel="stylesheet" href="css/app.css" />
+    <script>
+      (function () {
+        var path = location.pathname;
+        if (path.endsWith("/") || path.endsWith(".html")) return;
+        location.replace(path + "/" + location.search + location.hash);
+      })();
+    </script>
+  </head>
+  <body>
+    <div class="sky" aria-hidden="true"></div>
+    <a class="skip" href="#icerik">İçeriğe geç</a>
+    <div class="app">
+      <header class="top">
+        <p class="wordmark">Vakitler</p>
+        <button type="button" class="theme-toggle" id="theme-toggle" aria-pressed="false">Karanlık</button>
+      </header>
+      <p class="preprod" id="preprod" hidden>Deneme sürümü. <a href="../">Yayındaki site</a> bu denemeden değişmez.</p>
+      <script>
+        if (location.pathname.indexOf("/dev/") !== -1) {
+          document.getElementById("preprod").hidden = false;
+          document.title = "Vakitler deneme";
+        }
+      </script>
+      <button type="button" class="install-banner" id="install-button" hidden>Uygulamayı yükle</button>
+      <button type="button" class="place place-wide" id="place-button">
+        <span id="place-name">Şehir seç</span>
+        <span class="place-action">Değiştir</span>
+      </button>
+      <p class="dateline">
+        <strong id="date-line">Bir konum seçin</strong>
+        <span id="hijri-line"></span>
+        <span id="offline-flag" hidden>Çevrimdışı</span>
+      </p>
+
+      <nav class="tabs" aria-label="Bölümler">
+        <button type="button" data-view="today" aria-current="page">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.7" d="M12 4.5v2M12 17.5v2M4.5 12h2M17.5 12h2M6.4 6.4l1.4 1.4M16.2 16.2l1.4 1.4M17.6 6.4l-1.4 1.4M7.8 16.2l-1.4 1.4"/><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>
+          Bugün
+        </button>
+        <button type="button" data-view="month">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5.5" width="16" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path fill="none" stroke="currentColor" stroke-width="1.7" d="M4 9.5h16M8 3.8v3.2M16 3.8v3.2"/></svg>
+          Ay
+        </button>
+        <button type="button" data-view="qibla">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path fill="currentColor" d="M12 5.2 13.1 11H12l-1.1-5.8Z"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/></svg>
+          Kıble
+        </button>
+        <button type="button" data-view="settings">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" d="M5 8h14M5 16h14"/><circle cx="9" cy="8" r="2.1" fill="var(--bg0)" stroke="currentColor" stroke-width="1.7"/><circle cx="15" cy="16" r="2.1" fill="var(--bg0)" stroke="currentColor" stroke-width="1.7"/></svg>
+          Ayarlar
+        </button>
+      </nav>
+
+      <main id="icerik">
+        <section id="view-today">
+          <div id="welcome" data-need-place>
+            <p class="display">Bugünün vakitleri</p>
+            <p class="lede">Şehrini seç. Vakitler büyük yazıyla listelenir.</p>
+            <div class="welcome-actions">
+              <button type="button" class="primary big" id="welcome-search">Şehir seç</button>
+              <button type="button" class="ghost big" id="welcome-geo">Konumumu kullan</button>
+            </div>
+            <p class="hint" id="welcome-geo-status"></p>
+          </div>
+
+          <div id="today-body" data-has-place hidden>
+            <div class="daynav">
+              <button type="button" class="daybtn" id="prev-day">Dün</button>
+              <div class="daynav-label">
+                <p id="day-label"></p>
+                <button type="button" class="textbtn" id="back-today" hidden>Bugüne dön</button>
+              </div>
+              <button type="button" class="daybtn" id="next-day">Yarın</button>
+            </div>
+
+            <article class="hero" aria-live="off">
+              <p class="kicker" id="hero-kicker">Sıradaki vakit</p>
+              <h1 id="hero-name">—</h1>
+              <p class="hero-time" id="hero-time">—</p>
+              <p class="hero-sub" id="hero-sub"></p>
+              <div class="track" id="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Vakit aralığı">
+                <span id="progress-fill"></span>
+              </div>
+              <p class="live-chip" id="live-chip" hidden></p>
+            </article>
+
+            <ol class="times" id="time-list"></ol>
+            <details class="extra">
+              <summary>Gece saatleri</summary>
+              <div class="sunnah" id="sunnah">
+                <span>Gece yarısı <time id="sunnah-mid">—</time></span>
+                <span>Son üçte bir <time id="sunnah-last">—</time></span>
+              </div>
+            </details>
+            <p class="footnote">
+              <span id="method-note"></span>
+              <button type="button" class="textbtn" id="copy-button">Kopyala</button>
+              <button type="button" class="textbtn" id="share-button" hidden>Paylaş</button>
+            </p>
+          </div>
+        </section>
+
+        <section id="view-month" hidden>
+          <p class="need-place" data-need-place>Takvim için bir konum seçin. <button type="button" class="textbtn" data-open-place>Şehir seç</button></p>
+          <div data-has-place hidden>
+            <div class="daynav">
+              <button type="button" class="iconbtn" id="prev-month" aria-label="Önceki ay">
+                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M14.5 5.5 8 12l6.5 6.5"/></svg>
+              </button>
+              <p class="daynav-label" id="month-label"></p>
+              <button type="button" class="iconbtn" id="next-month" aria-label="Sonraki ay">
+                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M9.5 5.5 16 12l-6.5 6.5"/></svg>
+              </button>
+            </div>
+            <div class="weekdays" aria-hidden="true">
+              <span>Pzt</span><span>Sal</span><span>Çar</span><span>Per</span><span>Cum</span><span>Cmt</span><span>Paz</span>
+            </div>
+            <div class="month-grid" id="month-grid" role="grid" aria-label="Ay takvimi"></div>
+            <h2 class="month-caption" id="month-caption"></h2>
+            <ol class="times compact" id="month-times"></ol>
+          </div>
+        </section>
+
+        <section id="view-qibla" hidden>
+          <p class="need-place" data-need-place>Kıble için bir konum seçin. <button type="button" class="textbtn" data-open-place>Şehir seç</button></p>
+          <div data-has-place hidden>
+            <p class="kicker">Kıble</p>
+            <h2 class="qibla-place" id="qibla-place"></h2>
+            <div class="compass" id="compass">
+              <div class="rose">
+                <span class="dir n">K</span>
+                <span class="dir e">D</span>
+                <span class="dir s">G</span>
+                <span class="dir w">B</span>
+              </div>
+              <div class="needle"></div>
+              <div class="hub"></div>
+            </div>
+            <p class="qibla-readout"><strong id="qibla-deg">—</strong> <span>kuzeyden, saat yönünde</span></p>
+            <p class="qibla-distance" id="qibla-distance"></p>
+            <button type="button" class="primary" id="compass-permit">Pusulayı aç</button>
+            <p class="footnote" id="compass-note">Telefonu düz tut. Ok yukarı bakınca kıbleye dönüksün.</p>
+          </div>
+        </section>
+
+        <section id="view-settings" hidden>
+          <section class="group">
+            <h2>Görünüm</h2>
+            <div class="theme-choices" role="radiogroup" aria-label="Görünüm">
+              <button type="button" role="radio" data-theme="light" aria-checked="true">Aydınlık</button>
+              <button type="button" role="radio" data-theme="dark" aria-checked="false">Karanlık</button>
+              <button type="button" role="radio" data-theme="system" aria-checked="false">Otomatik</button>
+            </div>
+            <p class="hint">Otomatik, telefonun aydınlık veya karanlık ayarını kullanır.</p>
+          </section>
+
+          <section class="group">
+            <h2>Mezhep</h2>
+            <label class="field">
+              <select id="madhab-select" aria-label="Mezhep">
+                <option value="Hanafi">Hanefî, ikindi geç</option>
+                <option value="Shafi">Şâfiî, ikindi erken</option>
+                <option value="Jafari">Caferî, akşam geç</option>
+              </select>
+            </label>
+            <p class="hint" id="madhab-hint" hidden></p>
+          </section>
+
+          <section class="group">
+            <h2>Hatırlatma</h2>
+            <label class="field">Bildirim
+              <select id="remind-select">
+                <option value="off">Kapalı</option>
+                <option value="0">Vakit girince</option>
+                <option value="10">10 dakika önce</option>
+                <option value="15">15 dakika önce</option>
+              </select>
+            </label>
+            <p class="hint" id="remind-note">Kapalı. Vakit girince haber vermek için aç.</p>
+          </section>
+
+          <section class="group">
+            <h2>Paylaş</h2>
+            <button type="button" class="ghost big" id="share-app">Arkadaşına gönder</button>
+            <p class="hint">Vakitler bağlantısını bir arkadaşına yollar.</p>
+          </section>
+
+          <details class="extra">
+            <summary>Diğer ayarlar</summary>
+            <section class="group">
+              <h2>Hesap</h2>
+              <label class="field">Yöntem
+                <select id="method-select"></select>
+              </label>
+              <p class="hint" id="method-hint"></p>
+              <label class="field">Yüksek enlem
+                <select id="latitude-select">
+                  <option value="middleofthenight">Gecenin ortası</option>
+                  <option value="seventhofthenight">Gecenin yedide biri</option>
+                  <option value="twilightangle">Alacakaranlık açısı</option>
+                </select>
+              </label>
+            </section>
+
+            <section class="group">
+              <h2>Dakika düzeltmesi</h2>
+              <p class="hint">Caminizin cetveline uyması için her vakite dakika ekleyin veya çıkarın.</p>
+              <div class="adj-grid">
+                <label>İmsak <input type="number" data-adj="fajr" min="-30" max="30" step="1" value="0" inputmode="numeric" /></label>
+                <label>Güneş <input type="number" data-adj="sunrise" min="-30" max="30" step="1" value="0" inputmode="numeric" /></label>
+                <label>Öğle <input type="number" data-adj="dhuhr" min="-30" max="30" step="1" value="0" inputmode="numeric" /></label>
+                <label>İkindi <input type="number" data-adj="asr" min="-30" max="30" step="1" value="0" inputmode="numeric" /></label>
+                <label>Akşam <input type="number" data-adj="maghrib" min="-30" max="30" step="1" value="0" inputmode="numeric" /></label>
+                <label>Yatsı <input type="number" data-adj="isha" min="-30" max="30" step="1" value="0" inputmode="numeric" /></label>
+              </div>
+            </section>
+
+            <section class="group about">
+              <h2>Hakkında</h2>
+              <p>Vakitler tamamen tarayıcıda çalışır. GitHub Pages gibi statik bir sitede sunucu gerekmez.</p>
+              <p>Vakit hesabı adhan kütüphanesiyle yapılır. Varsayılan mezhep Hanefî’dir; Türkiye yöntemi Diyanet çizelgesine yakındır. Caferî aynı kutudan seçilir: imsak 16°, akşam güneş 4° batınca, yatsı 14°.</p>
+              <p>Hicri tarih Ümmü’l-Kurâ takvimine göredir; Diyanet’in ilan ettiği günden bir gün farklı olabilir.</p>
+              <p id="ios-note" hidden>Uygulama ana ekrandan açıldığında Safari çubuğu görünmez.</p>
+              <button type="button" class="ghost" id="reset-button">Ayarları sıfırla</button>
+            </section>
+          </details>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="place-dialog" aria-labelledby="place-title">
+      <div class="sheet">
+        <div class="sheet-head">
+          <h2 id="place-title">Konum</h2>
+          <button type="button" class="iconbtn" id="place-close" aria-label="Kapat">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M6 6l12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+        <button type="button" class="primary wide" id="geo-button">Konumumu kullan</button>
+        <p class="hint" id="geo-status"></p>
+        <label class="field">Şehir veya ilçe
+          <input id="place-search" type="search" placeholder="Kadıköy, Ankara, Mekke…" autocomplete="off" enterkeyhint="search" />
+        </label>
+        <div class="results" id="place-results"></div>
+        <details class="coord">
+          <summary>Enlem ve boylam</summary>
+          <form id="coord-form">
+            <div class="coord-grid">
+              <label>Enlem <input name="lat" inputmode="decimal" required placeholder="41.01" /></label>
+              <label>Boylam <input name="lon" inputmode="decimal" required placeholder="29.00" /></label>
+            </div>
+            <label class="field">Saat dilimi
+              <input name="tz" id="tz-input" required placeholder="Europe/Istanbul" />
+            </label>
+            <button type="submit" class="ghost">Bu koordinatı kullan</button>
+          </form>
+        </details>
+      </div>
+    </dialog>
+
+    <dialog id="install-dialog" aria-labelledby="install-title">
+      <div class="sheet">
+        <div class="sheet-head">
+          <h2 id="install-title">Ana ekrana ekle</h2>
+          <button type="button" class="iconbtn" id="install-close" aria-label="Kapat">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M6 6l12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+        <ol class="steps" id="install-steps">
+          <li>Safari’nin altındaki paylaş düğmesine bas. Kare içinde yukarı ok.</li>
+          <li>Açılan listede <strong>Ana Ekrana Ekle</strong> satırını seç.</li>
+          <li><strong>Ekle</strong>ye bas. Vakitler ikonu ana ekrana gelir ve uygulama gibi açılır.</li>
+        </ol>
+        <button type="button" class="primary big" id="install-native" hidden>Şimdi yükle</button>
+        <button type="button" class="primary big" id="install-done">Ekledim</button>
+        <button type="button" class="ghost big" id="install-later">Daha sonra</button>
+      </div>
+    </dialog>
+
+    <p class="toast" id="toast" hidden role="status"></p>
+    <script>
+      (function () {
+        try {
+          var store = location.pathname.indexOf("/dev/") !== -1 ? "vakitler.dev" : "vakitler.v1";
+          var raw = JSON.parse(localStorage.getItem(store) || "null");
+          var place = raw && raw.place;
+          if (!place || typeof place.name !== "string" || !place.name) return;
+          if (typeof place.lat !== "number" || typeof place.lon !== "number") return;
+          var name = document.getElementById("place-name");
+          if (name) name.textContent = place.name;
+          var action = document.querySelector(".place-action");
+          if (action) action.textContent = "Değiştir";
+          var welcome = document.getElementById("welcome");
+          if (welcome) welcome.hidden = true;
+          var today = document.getElementById("today-body");
+          if (today) today.hidden = false;
+        } catch (e) {}
+      })();
+    </script>
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>
