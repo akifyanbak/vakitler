@@ -55,6 +55,7 @@ let remindTimer = 0;
 let vesveseSample = null;
 let homeVesveseId = "";
 let homeVesveseSample = null;
+let homeVesvesePreview = false;
 
 init();
 
@@ -259,6 +260,7 @@ function bind() {
   $("remind-select").addEventListener("change", onRemindChange);
   $("vesvese-select").addEventListener("change", onVesveseChange);
   $("vesvese-next").addEventListener("click", () => renderVesveseSample(true));
+  $("vesvese-try").addEventListener("click", tryHomeVesvese);
   $("vesvese-besmele").addEventListener("click", dismissHomeVesvese);
   document.querySelectorAll("[data-adj]").forEach((input) => {
     input.addEventListener("change", () => {
@@ -1406,9 +1408,22 @@ function homeVesveseTarget(now = Date.now()) {
   return { id, key: active.key };
 }
 
+function paintHomeVesvese(card, sample) {
+  const face = $("vesvese-home-face");
+  face.src = vesveseFaceUrl(sample.face);
+  face.alt = "Kurnaz gülen şeytan";
+  $("vesvese-home-title").textContent = sample.title;
+  $("vesvese-home-line").textContent = sample.body;
+  card.hidden = false;
+}
+
 function renderHomeVesvese() {
   const card = $("vesvese-home");
   if (!card || card.classList.contains("is-leaving")) return;
+  if (homeVesvesePreview && homeVesveseSample) {
+    paintHomeVesvese(card, homeVesveseSample);
+    return;
+  }
   const target = homeVesveseTarget();
   if (!target) {
     card.hidden = true;
@@ -1418,16 +1433,35 @@ function renderHomeVesvese() {
     homeVesveseId = target.id;
     homeVesveseSample = pickVesvese();
   }
-  const face = $("vesvese-home-face");
-  face.src = vesveseFaceUrl(homeVesveseSample.face);
-  face.alt = "Kurnaz gülen şeytan";
-  $("vesvese-home-title").textContent = homeVesveseSample.title;
-  $("vesvese-home-line").textContent = homeVesveseSample.body;
-  card.hidden = false;
+  paintHomeVesvese(card, homeVesveseSample);
+}
+
+function tryHomeVesvese() {
+  if (!PREPROD || !state.vesvese) return;
+  if (!state.place) {
+    toast("Önce bir şehir seç");
+    return;
+  }
+  if (!vesveseSample) vesveseSample = pickVesvese();
+  const card = $("vesvese-home");
+  card?.classList.remove("is-leaving");
+  homeVesveseSample = vesveseSample;
+  homeVesveseId = "preview";
+  homeVesvesePreview = true;
+  const today = cityToday(state.place.tz);
+  if (!sameDay(state.selected, today)) {
+    state.selected = today;
+    state.month = { y: today.y, m: today.m };
+    state.pinned = false;
+  }
+  showView("today");
+  renderToday();
+  $("vesvese-home")?.scrollIntoView({ block: "center", behavior: "smooth" });
 }
 
 function dismissHomeVesvese() {
   const card = $("vesvese-home");
+  homeVesvesePreview = false;
   const target = homeVesveseTarget();
   if (target) {
     try {
@@ -1456,6 +1490,7 @@ function renderVesveseSample(next = false) {
   const visible = state.vesvese;
   $("vesvese-card").hidden = !visible;
   $("vesvese-actions").hidden = !visible;
+  $("vesvese-try").hidden = !PREPROD;
   $("vesvese-note").textContent = vesveseNote();
   if (!visible) return;
   const face = $("vesvese-face");
