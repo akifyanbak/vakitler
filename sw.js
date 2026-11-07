@@ -1,4 +1,4 @@
-const CACHE = "vakitler-v22";
+const CACHE = "vakitler-v23";
 
 const FILES = [
   "./",
@@ -62,6 +62,10 @@ self.addEventListener("activate", (event) => {
     (async () => {
       const keys = await caches.keys();
       await Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key)));
+      const shown = await self.registration.getNotifications();
+      for (const note of shown) {
+        if (String(note.tag).includes("vesvese")) note.close();
+      }
       await self.clients.claim();
     })(),
   );

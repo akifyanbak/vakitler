@@ -752,12 +752,8 @@ body:has(#install-button:not([hidden])) .times li {
 
 .vesvese-actions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.55rem;
-}
-
-.vesvese-actions:has(#vesvese-try[hidden]) {
   grid-template-columns: 1fr;
+  gap: 0.55rem;
 }
 
 .vesvese-actions .ghost {
