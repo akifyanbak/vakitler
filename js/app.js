@@ -12,8 +12,11 @@ import { pickVesvese } from "./vesvese.js";
 
 const STORAGE_KEY = "vakitler.v1";
 const PREPROD = location.pathname.includes("/dev/");
+const VESVESE_HOME_KEY = PREPROD ? "vakitler.dev.vesveseHome" : "vakitler.vesveseHome";
+const VESVESE_HOME_DELAY = 10 * 60 * 1000;
 const KAABA = { lat: 21.422487, lon: 39.826206 };
 const ORDER = ["fajr", "sunrise", "dhuhr", "asr", "maghrib", "isha"];
+const PRAYER_KEYS = ["fajr", "dhuhr", "asr", "maghrib", "isha"];
 const NAMES = {
   fajr: "İmsak",
   sunrise: "Güneş",
@@ -50,6 +53,8 @@ let toastTimer = 0;
 let notified = new Set(readNotified());
 let remindTimer = 0;
 let vesveseSample = null;
+let homeVesveseId = "";
+let homeVesveseSample = null;
 
 init();
 
@@ -255,6 +260,7 @@ function bind() {
   $("vesvese-select").addEventListener("change", onVesveseChange);
   $("vesvese-next").addEventListener("click", () => renderVesveseSample(true));
   $("vesvese-try").addEventListener("click", tryVesvese);
+  $("vesvese-besmele").addEventListener("click", dismissHomeVesvese);
   document.querySelectorAll("[data-adj]").forEach((input) => {
     input.addEventListener("change", () => {
       const key = input.dataset.adj;
@@ -917,6 +923,7 @@ function renderToday() {
   }
   $("method-note").textContent = methodNote(state.madhab, methodLabel(state.method));
   renderHero();
+  renderHomeVesvese();
 }
 
 function renderHero() {
@@ -1079,6 +1086,7 @@ function updateLive() {
   }
   if (resolvedTheme() !== state.appliedPalette) applyPalette();
   renderHero();
+  renderHomeVesvese();
   checkReminders();
 }
 
@@ -1362,11 +1370,81 @@ function finishNotifyAsk(result) {
   resolve?.(result);
 }
 
-const PRAYER_KEYS = ["fajr", "dhuhr", "asr", "maghrib", "isha"];
 const NOTIFIED_KEY = "vakitler.notified";
 
 function vesveseFaceUrl(face) {
   return new URL(`../icons/vesvese/${face}.jpg`, import.meta.url).href;
+}
+
+function homeVesveseTarget(now = Date.now()) {
+  if (!state.vesvese || !state.place) return null;
+  const today = cityToday(state.place.tz);
+  if (!sameDay(state.selected, today)) return null;
+  const candidates = [];
+  const yesterday = addDays(today, -1);
+  const packs = [
+    [yesterday, compute(state.place, yesterday)],
+    [today, compute(state.place, today)],
+  ];
+  for (const [day, pack] of packs) {
+    if (!pack) continue;
+    for (const key of PRAYER_KEYS) {
+      const at = pack.times[key];
+      if (!isValidDate(at) || at.getTime() > now) continue;
+      candidates.push({ day, key, at: at.getTime() });
+    }
+  }
+  const active = candidates.sort((a, b) => a.at - b.at).at(-1);
+  if (!active || now - active.at < VESVESE_HOME_DELAY) return null;
+  const id = `${active.day.y}-${active.day.m}-${active.day.d}-${active.key}`;
+  let dismissed = "";
+  try {
+    dismissed = localStorage.getItem(VESVESE_HOME_KEY) || "";
+  } catch {
+    dismissed = "";
+  }
+  if (dismissed === id) return null;
+  return { id, key: active.key };
+}
+
+function renderHomeVesvese() {
+  const card = $("vesvese-home");
+  if (!card || card.classList.contains("is-leaving")) return;
+  const target = homeVesveseTarget();
+  if (!target) {
+    card.hidden = true;
+    return;
+  }
+  if (homeVesveseId !== target.id || !homeVesveseSample) {
+    homeVesveseId = target.id;
+    homeVesveseSample = pickVesvese();
+  }
+  const face = $("vesvese-home-face");
+  face.src = vesveseFaceUrl(homeVesveseSample.face);
+  face.alt = "Kurnaz gülen şeytan";
+  $("vesvese-home-title").textContent = homeVesveseSample.title;
+  $("vesvese-home-line").textContent = homeVesveseSample.body;
+  card.hidden = false;
+}
+
+function dismissHomeVesvese() {
+  const card = $("vesvese-home");
+  const target = homeVesveseTarget();
+  if (target) {
+    try {
+      localStorage.setItem(VESVESE_HOME_KEY, target.id);
+    } catch {
+      /* depolama kapalı */
+    }
+  }
+  if (!card || card.hidden || card.classList.contains("is-leaving")) return;
+  card.classList.add("is-leaving");
+  const finish = () => {
+    card.hidden = true;
+    card.classList.remove("is-leaving");
+  };
+  card.addEventListener("transitionend", finish, { once: true });
+  window.setTimeout(finish, 500);
 }
 
 function vesveseNote() {
@@ -1415,6 +1493,7 @@ async function onVesveseChange() {
   state.vesvese = on;
   save();
   renderVesveseSample();
+  renderHomeVesvese();
   armReminder();
 }
 

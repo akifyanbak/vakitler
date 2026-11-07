@@ -693,6 +693,43 @@ body:has(#install-button:not([hidden])) .times li {
   background: var(--chip);
 }
 
+.vesvese-card[hidden] { display: none; }
+
+.vesvese-home {
+  position: relative;
+  align-items: flex-start;
+  margin: 0.85rem 0 0.15rem;
+  padding: 2.55rem 0.7rem 0.75rem;
+  transition: opacity 0.45s ease, transform 0.45s ease;
+}
+
+.vesvese-home.is-leaving {
+  opacity: 0;
+  transform: translateY(-0.4rem);
+  pointer-events: none;
+}
+
+.vesvese-besmele {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.45rem;
+  max-width: calc(100% - 0.9rem);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--bg0);
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.2;
+  padding: 0.38rem 0.7rem;
+  cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vesvese-home { transition: none; }
+}
+
 .vesvese-card img {
   width: 4.75rem;
   height: 4.75rem;
