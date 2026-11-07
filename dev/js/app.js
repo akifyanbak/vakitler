@@ -70,6 +70,7 @@ function init() {
   }
   ensureSelection();
   render();
+  if (state.place && needsPlaceLabel(state.place)) void resolvePlaceLabel(state.place);
   updateOnline();
   registerServiceWorker();
   setInterval(updateLive, 1000);
@@ -712,6 +713,78 @@ function fold(value) {
 
 let locating = false;
 let locatingToken = 0;
+const geocodeCache = new Map();
+
+function coordRegion(value) {
+  return typeof value === "string" && /^-?\d+\.\d+,\s*-?\d+\.\d+$/.test(value);
+}
+
+function isCustomCoordsPlace(place) {
+  return Boolean(place?.id?.startsWith("gps-") || place?.id?.startsWith("coord-"));
+}
+
+function needsPlaceLabel(place) {
+  if (!isCustomCoordsPlace(place)) return false;
+  if (place.name === "Bulunduğum yer" || place.name === "Koordinat" || place.name === "Konum belirleniyor…") return true;
+  return coordRegion(place.region);
+}
+
+function placeDisplayName(place) {
+  if (!place) return "Şehir seç";
+  if (isCustomCoordsPlace(place) && place.region && !coordRegion(place.region)) {
+    return `${place.name}, ${place.region}`;
+  }
+  return place.name;
+}
+
+function applyResolvedLabel(place, label) {
+  const next = { ...place, name: label.name, region: label.region || "" };
+  if (!state.place || state.place.id !== place.id) return;
+  state.place = next;
+  state.recents = state.recents.map((item) => (item.id === place.id ? next : item));
+  save();
+  render();
+}
+
+async function lookupPlaceLabel(lat, lon) {
+  const key = `${lat.toFixed(3)},${lon.toFixed(3)}`;
+  if (geocodeCache.has(key)) return geocodeCache.get(key);
+  try {
+    const url = new URL("https://api.bigdatacloud.net/data/reverse-geocode-client");
+    url.searchParams.set("latitude", String(lat));
+    url.searchParams.set("longitude", String(lon));
+    url.searchParams.set("localityLanguage", "tr");
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    const data = await response.json();
+    const name = data.city || data.locality || data.principalSubdivision || "";
+    if (!name) return null;
+    const label = { name, region: data.countryName || "" };
+    geocodeCache.set(key, label);
+    return label;
+  } catch {
+    return null;
+  }
+}
+
+async function resolvePlaceLabel(place, token) {
+  if (!needsPlaceLabel(place)) return;
+  const label = await lookupPlaceLabel(place.lat, place.lon);
+  if (token !== undefined && token !== locatingToken) return;
+  if (!label) {
+    if (state.place?.id !== place.id) return;
+    if (place.id.startsWith("gps-")) {
+      applyResolvedLabel(place, { name: "Bulunduğum yer", region: "" });
+    } else if (place.id.startsWith("coord-")) {
+      applyResolvedLabel(place, {
+        name: "Koordinat",
+        region: `${place.lat.toFixed(2)}, ${place.lon.toFixed(2)}`,
+      });
+    }
+    return;
+  }
+  applyResolvedLabel(place, label);
+}
 
 function setGeoStatus(message) {
   $("geo-status").textContent = message;
@@ -739,8 +812,8 @@ function placeFromCoords(lat, lon) {
   if (near && near.km <= 25) return near.place;
   return {
     id: `gps-${lat.toFixed(3)}-${lon.toFixed(3)}`,
-    name: "Bulunduğum yer",
-    region: `${lat.toFixed(2)}, ${lon.toFixed(2)}`,
+    name: "Konum belirleniyor…",
+    region: "",
     lat,
     lon,
     tz: Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Istanbul",
@@ -752,7 +825,9 @@ function finishGeo(token, position) {
   locating = false;
   setGeoBusy(false);
   setGeoStatus("");
-  choosePlace(placeFromCoords(position.coords.latitude, position.coords.longitude));
+  const place = placeFromCoords(position.coords.latitude, position.coords.longitude);
+  choosePlace(place);
+  if (needsPlaceLabel(place)) void resolvePlaceLabel(place, token);
 }
 
 function failGeo(token, error) {
@@ -831,14 +906,16 @@ function onCoordSubmit(event) {
     $("geo-status").textContent = "Saat dilimi tanınmadı. Örnek: Europe/Istanbul";
     return;
   }
-  choosePlace({
+  const place = {
     id: `coord-${lat.toFixed(3)}-${lon.toFixed(3)}`,
-    name: "Koordinat",
-    region: `${lat.toFixed(2)}, ${lon.toFixed(2)}`,
+    name: "Konum belirleniyor…",
+    region: "",
     lat,
     lon,
     tz,
-  });
+  };
+  choosePlace(place);
+  if (needsPlaceLabel(place)) void resolvePlaceLabel(place);
 }
 
 function choosePlace(place) {
@@ -876,7 +953,7 @@ function shiftMonth(amount) {
 function render() {
   ensureSelection();
   applyPalette();
-  $("place-name").textContent = state.place ? state.place.name : "Şehir seç";
+  $("place-name").textContent = placeDisplayName(state.place);
   document.querySelector(".place-action").textContent = state.place ? "Değiştir" : "Seç";
   document.querySelectorAll("[data-need-place]").forEach((element) => {
     element.hidden = Boolean(state.place);
