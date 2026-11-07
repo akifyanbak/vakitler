@@ -11,6 +11,7 @@ import { FEATURED_IDS, PLACES } from "./places.js";
 import { pickVesvese } from "./vesvese.js";
 
 const STORAGE_KEY = "vakitler.v1";
+const PREPROD = location.pathname.includes("/dev/");
 const KAABA = { lat: 21.422487, lon: 39.826206 };
 const ORDER = ["fajr", "sunrise", "dhuhr", "asr", "maghrib", "isha"];
 const NAMES = {
@@ -1309,6 +1310,7 @@ function renderVesveseSample(next = false) {
   const visible = state.vesvese;
   $("vesvese-card").hidden = !visible;
   $("vesvese-actions").hidden = !visible;
+  $("vesvese-try").hidden = !PREPROD;
   $("vesvese-note").textContent = vesveseNote();
   if (!visible) return;
   const face = $("vesvese-face");
@@ -1346,6 +1348,7 @@ async function onVesveseChange() {
 }
 
 async function tryVesvese() {
+  if (!PREPROD) return;
   if (!vesveseSample) vesveseSample = pickVesvese();
   const allowed = await ensureNotify();
   if (!allowed) {
