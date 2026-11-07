@@ -13,6 +13,18 @@ Uygulama: [https://akifyanbak.github.io/vakitler/](https://akifyanbak.github.io/
 
 Adresler görelidir. Uygulama hem depo sayfasında (`/vakitler/`) hem de alan adının kökünde çalışır. Dosyayı çift tıklayarak `file://` ile açmayın; hizmet çalışanı ancak bir adres üzerinden yüklenir.
 
+## Deneme adresi
+
+Yayındaki site [https://akifyanbak.github.io/vakitler/](https://akifyanbak.github.io/vakitler/) adresindedir. Deneme sürümü [https://akifyanbak.github.io/vakitler/dev/](https://akifyanbak.github.io/vakitler/dev/) adresindedir. Ekranda “Deneme sürümü” yazar. Ayarlar, şehir ve bildirimler ayrı saklanır; deneme önbelleği yayındaki siteyi silmez.
+
+Denemeyi güncellemek için istediğin dalı `dev` dalına gönder:
+
+```bash
+git push origin <dal>:dev
+```
+
+Bu gönderim yalnızca `dev/` klasörünü `main` dalında yeniler. Kökteki yayındaki dosyalar durur. `main` korumalıysa Actions günlüğündeki itme reddine bak; `dev` dalının `main`’e yazmasına izin vermek gerekir.
+
 ## Ne yapar
 
 - İmsak, güneş, öğle, ikindi, akşam ve yatsı, büyük yazıyla tek ekranda

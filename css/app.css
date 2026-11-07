@@ -165,6 +165,18 @@ body {
   gap: 0.75rem;
 }
 
+.preprod {
+  margin: 0.7rem 0 0;
+  padding: 0.55rem 0.75rem;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  color: var(--ink);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.preprod a { color: inherit; }
+
 .wordmark {
   margin: 0;
   font-family: var(--serif);

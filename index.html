@@ -21,7 +21,8 @@
     <script>
       (function () {
         try {
-          var raw = JSON.parse(localStorage.getItem("vakitler.v1") || "null");
+          var store = location.pathname.indexOf("/dev/") !== -1 ? "vakitler.dev" : "vakitler.v1";
+          var raw = JSON.parse(localStorage.getItem(store) || "null");
           var theme = raw && raw.theme;
           var dark = theme === "dark" || theme === "night" ||
             (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
@@ -49,6 +50,13 @@
         <p class="wordmark">Vakitler</p>
         <button type="button" class="theme-toggle" id="theme-toggle" aria-pressed="false">Karanlık</button>
       </header>
+      <p class="preprod" id="preprod" hidden>Deneme sürümü. <a href="../">Yayındaki site</a> bu denemeden değişmez.</p>
+      <script>
+        if (location.pathname.indexOf("/dev/") !== -1) {
+          document.getElementById("preprod").hidden = false;
+          document.title = "Vakitler deneme";
+        }
+      </script>
       <button type="button" class="install-banner" id="install-button" hidden>Uygulamayı yükle</button>
       <button type="button" class="place place-wide" id="place-button">
         <span id="place-name">Şehir seç</span>
@@ -309,7 +317,8 @@
     <script>
       (function () {
         try {
-          var raw = JSON.parse(localStorage.getItem("vakitler.v1") || "null");
+          var store = location.pathname.indexOf("/dev/") !== -1 ? "vakitler.dev" : "vakitler.v1";
+          var raw = JSON.parse(localStorage.getItem(store) || "null");
           var place = raw && raw.place;
           if (!place || typeof place.name !== "string" || !place.name) return;
           if (typeof place.lat !== "number" || typeof place.lon !== "number") return;
