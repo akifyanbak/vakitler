@@ -208,6 +208,28 @@
           </section>
 
           <section class="group">
+            <h2>Vesvese</h2>
+            <label class="field">Bildirim
+              <select id="vesvese-select" aria-label="Vesvese">
+                <option value="off">Kapalı</option>
+                <option value="on">Açık</option>
+              </select>
+            </label>
+            <p class="hint" id="vesvese-note">Kapalı. Vakit girince kurnaz bir yüz ve bir bahane düşer.</p>
+            <div class="vesvese-card" id="vesvese-card" hidden>
+              <img id="vesvese-face" alt="" width="96" height="96" />
+              <div>
+                <strong id="vesvese-title"></strong>
+                <p id="vesvese-line"></p>
+              </div>
+            </div>
+            <div class="vesvese-actions" id="vesvese-actions" hidden>
+              <button type="button" class="ghost" id="vesvese-next">Başka vesvese</button>
+              <button type="button" class="ghost" id="vesvese-try">Bildirimi dene</button>
+            </div>
+          </section>
+
+          <section class="group">
             <h2>Paylaş</h2>
             <button type="button" class="ghost big" id="share-app">Arkadaşına gönder</button>
             <p class="hint">Vakitler bağlantısını bir arkadaşına yollar.</p>

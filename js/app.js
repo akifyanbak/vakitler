@@ -8,6 +8,7 @@ import {
 } from "../vendor/adhan.esm.js";
 import { isJafariMadhab, methodNote, normalizeStoredMadhab, prayerParameters } from "./mezhep.js";
 import { FEATURED_IDS, PLACES } from "./places.js";
+import { pickVesvese } from "./vesvese.js";
 
 const STORAGE_KEY = "vakitler.v1";
 const KAABA = { lat: 21.422487, lon: 39.826206 };
@@ -47,6 +48,7 @@ let gotHeading = false;
 let toastTimer = 0;
 let notified = new Set(readNotified());
 let remindTimer = 0;
+let vesveseSample = null;
 
 init();
 
@@ -85,6 +87,7 @@ function loadState() {
     highLatitude: HighLatitudeRule.MiddleOfTheNight,
     theme: "light",
     remind: "off",
+    vesvese: false,
     adjustments: freshAdjustments(),
     selected: null,
     month: null,
@@ -117,6 +120,7 @@ function loadState() {
       highLatitude,
       theme,
       remind,
+      vesvese: raw.vesvese === true,
       adjustments,
     };
   } catch {
@@ -157,6 +161,7 @@ function save() {
     highLatitude: state.highLatitude,
     theme: state.theme,
     remind: state.remind,
+    vesvese: state.vesvese,
     adjustments: state.adjustments,
   };
   try {
@@ -181,7 +186,9 @@ function syncForm() {
   $("madhab-select").value = state.madhab;
   $("latitude-select").value = state.highLatitude;
   $("remind-select").value = state.remind;
+  $("vesvese-select").value = state.vesvese ? "on" : "off";
   syncMethodControl();
+  renderVesveseSample();
   for (const input of document.querySelectorAll("[data-adj]")) {
     input.value = String(state.adjustments[input.dataset.adj] ?? 0);
   }
@@ -244,6 +251,9 @@ function bind() {
     if (state.theme === "system") applyPalette();
   });
   $("remind-select").addEventListener("change", onRemindChange);
+  $("vesvese-select").addEventListener("change", onVesveseChange);
+  $("vesvese-next").addEventListener("click", () => renderVesveseSample(true));
+  $("vesvese-try").addEventListener("click", tryVesvese);
   document.querySelectorAll("[data-adj]").forEach((input) => {
     input.addEventListener("change", () => {
       const key = input.dataset.adj;
@@ -1283,14 +1293,90 @@ async function ensureNotify() {
 const PRAYER_KEYS = ["fajr", "dhuhr", "asr", "maghrib", "isha"];
 const NOTIFIED_KEY = "vakitler.notified";
 
+function vesveseFaceUrl(face) {
+  return new URL(`../icons/vesvese/${face}.jpg`, import.meta.url).href;
+}
+
+function vesveseNote() {
+  if (!state.vesvese) return "Kapalı. Vakit girince kurnaz bir yüz ve bir bahane düşer.";
+  if (isIos() && !isStandalone()) return iosNotifyNote();
+  if ("Notification" in window && Notification.permission === "denied") return notifyDeniedNote();
+  return "Açık. Vakit girince şeytan bir bahane fısıldar. Uygulama açıkken çalışır.";
+}
+
+function renderVesveseSample(next = false) {
+  if (next || !vesveseSample) vesveseSample = pickVesvese();
+  const visible = state.vesvese;
+  $("vesvese-card").hidden = !visible;
+  $("vesvese-actions").hidden = !visible;
+  $("vesvese-note").textContent = vesveseNote();
+  if (!visible) return;
+  const face = $("vesvese-face");
+  face.src = vesveseFaceUrl(vesveseSample.face);
+  face.alt = "Kurnaz gülen şeytan";
+  $("vesvese-title").textContent = vesveseSample.title;
+  $("vesvese-line").textContent = vesveseSample.body;
+}
+
+async function onVesveseChange() {
+  const on = $("vesvese-select").value === "on";
+  if (on) {
+    if (isIos() && !isStandalone()) {
+      $("vesvese-select").value = "off";
+      state.vesvese = false;
+      renderVesveseSample();
+      save();
+      return;
+    }
+    const allowed = await ensureNotify();
+    if (!allowed) {
+      $("vesvese-select").value = "off";
+      state.vesvese = false;
+      $("vesvese-card").hidden = true;
+      $("vesvese-actions").hidden = true;
+      $("vesvese-note").textContent = notifyDeniedNote();
+      save();
+      return;
+    }
+  }
+  state.vesvese = on;
+  save();
+  renderVesveseSample();
+  armReminder();
+}
+
+async function tryVesvese() {
+  if (!vesveseSample) vesveseSample = pickVesvese();
+  const allowed = await ensureNotify();
+  if (!allowed) {
+    toast("Bildirim izni kapalı");
+    renderVesveseSample();
+    return;
+  }
+  await showReminder({
+    key: "dhuhr",
+    id: `vesvese-try-${Date.now()}`,
+    clock: "",
+    vesvese: true,
+    sample: vesveseSample,
+  });
+}
+
+function notificationsWanted() {
+  return state.remind !== "off" || state.vesvese;
+}
+
+function momentGrace(moment) {
+  return moment.vesvese || Number(state.remind) === 0 ? 5 * 60 * 1000 : 2 * 60 * 1000;
+}
+
 function checkReminders() {
-  if (state.remind === "off" || !state.place || !("Notification" in window)) return;
+  if (!notificationsWanted() || !state.place || !("Notification" in window)) return;
   if (Notification.permission !== "granted") return;
   const now = Date.now();
-  const grace = Number(state.remind) === 0 ? 5 * 60 * 1000 : 2 * 60 * 1000;
   for (const moment of remindMoments()) {
     if (notified.has(moment.id)) continue;
-    if (now < moment.when || now >= moment.when + grace) continue;
+    if (now < moment.when || now >= moment.when + momentGrace(moment)) continue;
     notified.add(moment.id);
     persistNotified();
     void showReminder(moment);
@@ -1298,22 +1384,35 @@ function checkReminders() {
 }
 
 function remindMoments() {
-  if (!state.place || state.remind === "off") return [];
+  if (!state.place || !notificationsWanted()) return [];
   const today = cityToday(state.place.tz);
-  const lead = Number(state.remind) * 60 * 1000;
   const moments = [];
+  const plain = state.remind !== "off" && !(state.vesvese && state.remind === "0");
   for (const day of [today, addDays(today, 1)]) {
     const pack = compute(state.place, day);
     if (!pack) continue;
     for (const key of PRAYER_KEYS) {
       const at = pack.times[key];
       if (!isValidDate(at)) continue;
-      moments.push({
-        key,
-        when: at.getTime() - lead,
-        id: `${day.y}-${day.m}-${day.d}-${key}-${state.remind}`,
-        clock: formatClock(at, state.place.tz),
-      });
+      if (plain) {
+        const lead = Number(state.remind) * 60 * 1000;
+        moments.push({
+          key,
+          when: at.getTime() - lead,
+          id: `${day.y}-${day.m}-${day.d}-${key}-${state.remind}`,
+          clock: formatClock(at, state.place.tz),
+          vesvese: false,
+        });
+      }
+      if (state.vesvese) {
+        moments.push({
+          key,
+          when: at.getTime(),
+          id: `${day.y}-${day.m}-${day.d}-${key}-vesvese`,
+          clock: formatClock(at, state.place.tz),
+          vesvese: true,
+        });
+      }
     }
   }
   moments.sort((a, b) => a.when - b.when);
@@ -1322,11 +1421,10 @@ function remindMoments() {
 
 function armReminder() {
   window.clearTimeout(remindTimer);
-  if (state.remind === "off" || !state.place || !("Notification" in window)) return;
+  if (!notificationsWanted() || !state.place || !("Notification" in window)) return;
   if (Notification.permission !== "granted") return;
   const now = Date.now();
-  const grace = Number(state.remind) === 0 ? 5 * 60 * 1000 : 2 * 60 * 1000;
-  const upcoming = remindMoments().find((moment) => !notified.has(moment.id) && now < moment.when + grace);
+  const upcoming = remindMoments().find((moment) => !notified.has(moment.id) && now < moment.when + momentGrace(moment));
   if (!upcoming) return;
   const delay = Math.max(0, upcoming.when - now);
   remindTimer = window.setTimeout(() => {
@@ -1336,13 +1434,19 @@ function armReminder() {
 }
 
 async function showReminder(moment) {
+  const whisper = moment.vesvese ? moment.sample || pickVesvese() : null;
   const entered = Number(state.remind) === 0;
-  const title = entered
-    ? `${NAMES[moment.key]} vakti girdi`
-    : `${NAMES[moment.key]} vaktine ${state.remind} dakika`;
-  const body = `${state.place.name} · ${moment.clock}`;
-  const icon = new URL("../icons/icon-192.png", import.meta.url).href;
+  const title = whisper
+    ? whisper.title
+    : entered
+      ? `${NAMES[moment.key]} vakti girdi`
+      : `${NAMES[moment.key]} vaktine ${state.remind} dakika`;
+  const body = whisper ? whisper.body : `${state.place.name} · ${moment.clock}`;
+  const icon = whisper
+    ? vesveseFaceUrl(whisper.face)
+    : new URL("../icons/icon-192.png", import.meta.url).href;
   const options = { body, lang: "tr", icon, tag: moment.id, renotify: true };
+  if (whisper) options.image = icon;
   try {
     const registration = "serviceWorker" in navigator ? await navigator.serviceWorker.getRegistration() : null;
     if (registration?.showNotification) {
@@ -1355,7 +1459,13 @@ async function showReminder(moment) {
   try {
     new Notification(title, options);
   } catch {
-    /* bildirim oluşturulamadı */
+    if (!whisper) return;
+    delete options.image;
+    try {
+      new Notification(title, options);
+    } catch {
+      /* bildirim oluşturulamadı */
+    }
   }
 }
 

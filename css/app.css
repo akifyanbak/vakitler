@@ -682,6 +682,49 @@ body:has(#install-button:not([hidden])) .times li {
 #compass-permit { display: block; margin: 1rem auto 0; }
 #compass-note { text-align: center; }
 
+.vesvese-card {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin: 0 0 0.75rem;
+  padding: 0.7rem;
+  border: 2px solid var(--line);
+  border-radius: 16px;
+  background: var(--chip);
+}
+
+.vesvese-card img {
+  width: 4.75rem;
+  height: 4.75rem;
+  border-radius: 14px;
+  object-fit: cover;
+  flex: none;
+  background: #141614;
+}
+
+.vesvese-card strong {
+  display: block;
+  color: var(--ink);
+  font-size: 1.05rem;
+}
+
+.vesvese-card p {
+  margin: 0.15rem 0 0;
+  color: var(--muted);
+}
+
+.vesvese-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem;
+}
+
+.vesvese-actions .ghost {
+  width: 100%;
+  min-height: 3rem;
+  font-weight: 700;
+}
+
 .group { margin-top: 1.5rem; }
 
 .group h2 {
