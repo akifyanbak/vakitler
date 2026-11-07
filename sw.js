@@ -1,5 +1,5 @@
 const PREPROD = self.location.pathname.includes("/dev/");
-const CACHE = PREPROD ? "vakitler-dev-v22" : "vakitler-v22";
+const CACHE = PREPROD ? "vakitler-dev-v23" : "vakitler-v23";
 const CACHE_PREFIX = PREPROD ? "vakitler-dev-" : "vakitler-v";
 
 const FILES = [
@@ -21,6 +21,9 @@ const FILES = [
   "./icons/vesvese/8.jpg",
   "./icons/vesvese/9.jpg",
   "./icons/vesvese/10.jpg",
+  "./icons/vesvese/touch-180.png",
+  "./icons/vesvese/icon-192.png",
+  "./icons/vesvese/icon-512.png",
   "./vendor/adhan.esm.js",
   "./icons/favicon.svg",
   "./icons/icon-192.png",
