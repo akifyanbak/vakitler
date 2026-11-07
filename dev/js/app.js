@@ -70,7 +70,9 @@ function init() {
   }
   ensureSelection();
   render();
-  if (state.place && needsPlaceLabel(state.place)) void resolvePlaceLabel(state.place);
+  queueMicrotask(() => {
+    if (state.place && needsPlaceLabel(state.place)) void resolvePlaceLabel(state.place);
+  });
   updateOnline();
   registerServiceWorker();
   setInterval(updateLive, 1000);
