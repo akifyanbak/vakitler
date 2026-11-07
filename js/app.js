@@ -9,7 +9,8 @@ import {
 import { isJafariMadhab, methodNote, normalizeStoredMadhab, prayerParameters } from "./mezhep.js";
 import { FEATURED_IDS, PLACES } from "./places.js";
 
-const STORAGE_KEY = "vakitler.v1";
+const PREPROD = location.pathname.includes("/dev/");
+const STORAGE_KEY = PREPROD ? "vakitler.dev" : "vakitler.v1";
 const KAABA = { lat: 21.422487, lon: 39.826206 };
 const ORDER = ["fajr", "sunrise", "dhuhr", "asr", "maghrib", "isha"];
 const NAMES = {
@@ -334,7 +335,7 @@ function showView(name) {
   if (name === "qibla") watchCompass();
 }
 
-const HOME_KEY = "vakitler.home";
+const HOME_KEY = PREPROD ? "vakitler.dev.home" : "vakitler.home";
 
 function isIos() {
   const ua = navigator.userAgent;
@@ -912,7 +913,7 @@ function renderHero() {
       chip.hidden = false;
       chip.textContent = `Sıradaki · ${NAMES[upcoming.next.key]} ${formatClock(upcoming.next.date, state.place.tz)} · ${formatRemain(upcoming.next.date.getTime() - Date.now())}`;
     }
-    document.title = `${dayMonth(state.selected)} · Vakitler`;
+    document.title = appTitle(`${dayMonth(state.selected)} · Vakitler`);
     return;
   }
   time.classList.remove("is-word");
@@ -940,7 +941,7 @@ function renderHero() {
   } else {
     progress.hidden = true;
   }
-  const title = `${NAMES[next.key]} ${formatClock(next.date, state.place.tz)} · Vakitler`;
+  const title = appTitle(`${NAMES[next.key]} ${formatClock(next.date, state.place.tz)} · Vakitler`);
   if (document.title !== title) document.title = title;
 }
 
@@ -1281,7 +1282,7 @@ async function ensureNotify() {
 }
 
 const PRAYER_KEYS = ["fajr", "dhuhr", "asr", "maghrib", "isha"];
-const NOTIFIED_KEY = "vakitler.notified";
+const NOTIFIED_KEY = PREPROD ? "vakitler.dev.notified" : "vakitler.notified";
 
 function checkReminders() {
   if (state.remind === "off" || !state.place || !("Notification" in window)) return;
@@ -1542,6 +1543,10 @@ function haversine(lat1, lon1, lat2, lon2) {
   const dLambda = ((lon2 - lon1) * Math.PI) / 180;
   const a = Math.sin(dPhi / 2) ** 2 + Math.cos(phi1) * Math.cos(phi2) * Math.sin(dLambda / 2) ** 2;
   return 2 * radius * Math.asin(Math.min(1, Math.sqrt(a)));
+}
+
+function appTitle(text) {
+  return PREPROD ? `${text} deneme` : text;
 }
 
 function appBase() {

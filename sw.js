@@ -1,4 +1,6 @@
-const CACHE = "vakitler-v17";
+const PREPROD = self.location.pathname.includes("/dev/");
+const CACHE = PREPROD ? "vakitler-dev-v18" : "vakitler-v18";
+const CACHE_PREFIX = PREPROD ? "vakitler-dev-" : "vakitler-v";
 
 const FILES = [
   "./",
@@ -50,7 +52,9 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     (async () => {
       const keys = await caches.keys();
-      await Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key)));
+      await Promise.all(
+        keys.filter((key) => key.startsWith(CACHE_PREFIX) && key !== CACHE).map((key) => caches.delete(key)),
+      );
       await self.clients.claim();
     })(),
   );
@@ -79,6 +83,7 @@ self.addEventListener("fetch", (event) => {
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+  if (!PREPROD && url.pathname.includes("/dev/")) return;
 
   if (request.mode === "navigate") {
     event.respondWith(networkFirst(request));

@@ -1,0 +1,47 @@
+name: Preprod
+
+on:
+  push:
+    branches:
+      - dev
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: preprod
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout deneme dalı
+        uses: actions/checkout@v4
+        with:
+          ref: dev
+          path: source
+          persist-credentials: false
+
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: site
+
+      - name: Deneme klasörünü yenile
+        run: node source/scripts/publish-preprod.mjs source site
+
+      - name: main dalına yaz
+        working-directory: site
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A dev
+          if git diff --cached --quiet; then
+            echo "Deneme sitesinde değişiklik yok"
+            exit 0
+          fi
+          git commit -m "Update preprod site"
+          git push origin HEAD:main

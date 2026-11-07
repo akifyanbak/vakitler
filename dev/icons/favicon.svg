@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#121826"/>
+  <mask id="crescent">
+    <rect width="64" height="64" fill="#000"/>
+    <circle cx="29" cy="34" r="15" fill="#fff"/>
+    <circle cx="36" cy="31.5" r="12" fill="#000"/>
+  </mask>
+  <circle cx="29" cy="34" r="15" fill="#e6c48a" mask="url(#crescent)"/>
+  <path fill="#f4e2b6" d="M46 16.2 47.7 20.8 52.5 21.2 48.8 24.3 50 29 46 26.3 42 29 43.2 24.3 39.5 21.2 44.3 20.8Z"/>
+</svg>
