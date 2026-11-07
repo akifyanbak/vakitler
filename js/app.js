@@ -185,7 +185,52 @@ function syncForm() {
   for (const input of document.querySelectorAll("[data-adj]")) {
     input.value = String(state.adjustments[input.dataset.adj] ?? 0);
   }
+  syncAdjustmentButtons();
   $("remind-note").textContent = remindNote();
+}
+
+function clampAdjustment(n) {
+  return Math.max(-30, Math.min(30, n));
+}
+
+function sanitizeAdjustmentText(raw) {
+  const text = String(raw).replace(/[−–—]/g, "-").replace(/[^\d-]/g, "").replace(/(?!^)-/g, "");
+  return text.match(/^-?\d{0,2}/)?.[0] ?? "";
+}
+
+function syncAdjustmentButtons() {
+  for (const button of document.querySelectorAll("[data-adj-delta]")) {
+    const current = state.adjustments[button.dataset.adjDelta] ?? 0;
+    const delta = Number(button.dataset.delta);
+    button.disabled = current + delta < -30 || current + delta > 30;
+  }
+}
+
+function setAdjustment(key, n) {
+  const next = clampAdjustment(n);
+  const input = document.querySelector(`[data-adj="${key}"]`);
+  if (input) input.value = String(next);
+  if (state.adjustments[key] !== next) {
+    state.adjustments[key] = next;
+    save();
+    render();
+  }
+  syncAdjustmentButtons();
+}
+
+function commitAdjustment(input) {
+  const key = input.dataset.adj;
+  const clean = sanitizeAdjustmentText(input.value);
+  if (clean === "" || clean === "-") {
+    input.value = String(state.adjustments[key] ?? 0);
+    return;
+  }
+  const n = Number.parseInt(clean, 10);
+  if (!Number.isFinite(n)) {
+    input.value = String(state.adjustments[key] ?? 0);
+    return;
+  }
+  setAdjustment(key, n);
 }
 
 function bind() {
@@ -245,17 +290,21 @@ function bind() {
   });
   $("remind-select").addEventListener("change", onRemindChange);
   document.querySelectorAll("[data-adj]").forEach((input) => {
-    input.addEventListener("change", () => {
-      const key = input.dataset.adj;
-      let n = Number.parseInt(input.value, 10);
-      if (!Number.isFinite(n)) n = 0;
-      n = Math.max(-30, Math.min(30, n));
-      input.value = String(n);
-      state.adjustments[key] = n;
-      save();
-      render();
+    input.addEventListener("input", () => {
+      const clean = sanitizeAdjustmentText(input.value);
+      if (clean !== input.value) input.value = clean;
     });
+    input.addEventListener("change", () => commitAdjustment(input));
+    input.addEventListener("blur", () => commitAdjustment(input));
     input.addEventListener("wheel", () => input.blur(), { passive: true });
+  });
+  document.querySelectorAll("[data-adj-delta]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const key = button.dataset.adjDelta;
+      const delta = Number(button.dataset.delta);
+      const next = clampAdjustment((state.adjustments[key] ?? 0) + delta);
+      setAdjustment(key, next);
+    });
   });
   $("reset-button").addEventListener("click", () => {
     if (!window.confirm("Konum ve ayarlar silinsin mi?")) return;
