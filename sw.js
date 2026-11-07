@@ -1,5 +1,5 @@
 const PREPROD = self.location.pathname.includes("/dev/");
-const CACHE = PREPROD ? "vakitler-dev-v24" : "vakitler-v24";
+const CACHE = PREPROD ? "vakitler-dev-v25" : "vakitler-v25";
 const CACHE_PREFIX = PREPROD ? "vakitler-dev-" : "vakitler-v";
 
 const FILES = [
@@ -69,6 +69,10 @@ self.addEventListener("activate", (event) => {
       await Promise.all(
         keys.filter((key) => key.startsWith(CACHE_PREFIX) && key !== CACHE).map((key) => caches.delete(key)),
       );
+      const shown = await self.registration.getNotifications();
+      for (const note of shown) {
+        if (String(note.tag).includes("vesvese")) note.close();
+      }
       await self.clients.claim();
     })(),
   );

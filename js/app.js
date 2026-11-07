@@ -259,7 +259,6 @@ function bind() {
   $("remind-select").addEventListener("change", onRemindChange);
   $("vesvese-select").addEventListener("change", onVesveseChange);
   $("vesvese-next").addEventListener("click", () => renderVesveseSample(true));
-  $("vesvese-try").addEventListener("click", tryVesvese);
   $("vesvese-besmele").addEventListener("click", dismissHomeVesvese);
   document.querySelectorAll("[data-adj]").forEach((input) => {
     input.addEventListener("change", () => {
@@ -1448,10 +1447,8 @@ function dismissHomeVesvese() {
 }
 
 function vesveseNote() {
-  if (!state.vesvese) return "Kapalı. Vakit girince kurnaz bir yüz ve bir bahane düşer.";
-  if (isIos() && !isStandalone()) return iosNotifyNote();
-  if ("Notification" in window && Notification.permission === "denied") return notifyDeniedNote();
-  return "Açık. Vakit girince şeytan bir bahane fısıldar. Uygulama açıkken çalışır.";
+  if (!state.vesvese) return "Kapalı. Açınca, vakit girdikten 10 dakika sonra Bugün ekranında durur.";
+  return "Açık. Vakit girdikten 10 dakika sonra Bugün ekranında durur. Besmeleyle kapanır.";
 }
 
 function renderVesveseSample(next = false) {
@@ -1459,7 +1456,6 @@ function renderVesveseSample(next = false) {
   const visible = state.vesvese;
   $("vesvese-card").hidden = !visible;
   $("vesvese-actions").hidden = !visible;
-  $("vesvese-try").hidden = !PREPROD;
   $("vesvese-note").textContent = vesveseNote();
   if (!visible) return;
   const face = $("vesvese-face");
@@ -1469,58 +1465,19 @@ function renderVesveseSample(next = false) {
   $("vesvese-line").textContent = vesveseSample.body;
 }
 
-async function onVesveseChange() {
-  const on = $("vesvese-select").value === "on";
-  if (on) {
-    if (isIos() && !isStandalone()) {
-      $("vesvese-select").value = "off";
-      state.vesvese = false;
-      renderVesveseSample();
-      save();
-      return;
-    }
-    const allowed = await ensureNotify();
-    if (!allowed) {
-      $("vesvese-select").value = "off";
-      state.vesvese = false;
-      $("vesvese-card").hidden = true;
-      $("vesvese-actions").hidden = true;
-      $("vesvese-note").textContent = notifyDeniedNote();
-      save();
-      return;
-    }
-  }
-  state.vesvese = on;
+function onVesveseChange() {
+  state.vesvese = $("vesvese-select").value === "on";
   save();
   renderVesveseSample();
   renderHomeVesvese();
-  armReminder();
-}
-
-async function tryVesvese() {
-  if (!PREPROD) return;
-  if (!vesveseSample) vesveseSample = pickVesvese();
-  const allowed = await ensureNotify();
-  if (!allowed) {
-    if (!("Notification" in window)) toast("Bu tarayıcı bildirim gönderemiyor.");
-    renderVesveseSample();
-    return;
-  }
-  await showReminder({
-    key: "dhuhr",
-    id: `vesvese-try-${Date.now()}`,
-    clock: "",
-    vesvese: true,
-    sample: vesveseSample,
-  });
 }
 
 function notificationsWanted() {
-  return state.remind !== "off" || state.vesvese;
+  return state.remind !== "off";
 }
 
-function momentGrace(moment) {
-  return moment.vesvese || Number(state.remind) === 0 ? 5 * 60 * 1000 : 2 * 60 * 1000;
+function momentGrace() {
+  return Number(state.remind) === 0 ? 5 * 60 * 1000 : 2 * 60 * 1000;
 }
 
 function checkReminders() {
@@ -1529,7 +1486,7 @@ function checkReminders() {
   const now = Date.now();
   for (const moment of remindMoments()) {
     if (notified.has(moment.id)) continue;
-    if (now < moment.when || now >= moment.when + momentGrace(moment)) continue;
+    if (now < moment.when || now >= moment.when + momentGrace()) continue;
     notified.add(moment.id);
     persistNotified();
     void showReminder(moment);
@@ -1540,32 +1497,19 @@ function remindMoments() {
   if (!state.place || !notificationsWanted()) return [];
   const today = cityToday(state.place.tz);
   const moments = [];
-  const plain = state.remind !== "off" && !(state.vesvese && state.remind === "0");
+  const lead = Number(state.remind) * 60 * 1000;
   for (const day of [today, addDays(today, 1)]) {
     const pack = compute(state.place, day);
     if (!pack) continue;
     for (const key of PRAYER_KEYS) {
       const at = pack.times[key];
       if (!isValidDate(at)) continue;
-      if (plain) {
-        const lead = Number(state.remind) * 60 * 1000;
-        moments.push({
-          key,
-          when: at.getTime() - lead,
-          id: `${day.y}-${day.m}-${day.d}-${key}-${state.remind}`,
-          clock: formatClock(at, state.place.tz),
-          vesvese: false,
-        });
-      }
-      if (state.vesvese) {
-        moments.push({
-          key,
-          when: at.getTime(),
-          id: `${day.y}-${day.m}-${day.d}-${key}-vesvese`,
-          clock: formatClock(at, state.place.tz),
-          vesvese: true,
-        });
-      }
+      moments.push({
+        key,
+        when: at.getTime() - lead,
+        id: `${day.y}-${day.m}-${day.d}-${key}-${state.remind}`,
+        clock: formatClock(at, state.place.tz),
+      });
     }
   }
   moments.sort((a, b) => a.when - b.when);
@@ -1577,7 +1521,7 @@ function armReminder() {
   if (!notificationsWanted() || !state.place || !("Notification" in window)) return;
   if (Notification.permission !== "granted") return;
   const now = Date.now();
-  const upcoming = remindMoments().find((moment) => !notified.has(moment.id) && now < moment.when + momentGrace(moment));
+  const upcoming = remindMoments().find((moment) => !notified.has(moment.id) && now < moment.when + momentGrace());
   if (!upcoming) return;
   const delay = Math.max(0, upcoming.when - now);
   remindTimer = window.setTimeout(() => {
@@ -1587,19 +1531,11 @@ function armReminder() {
 }
 
 async function showReminder(moment) {
-  const whisper = moment.vesvese ? moment.sample || pickVesvese() : null;
   const entered = Number(state.remind) === 0;
-  const title = whisper
-    ? whisper.title
-    : entered
-      ? `${NAMES[moment.key]} vakti girdi`
-      : `${NAMES[moment.key]} vaktine ${state.remind} dakika`;
-  const body = whisper ? whisper.body : `${state.place.name} · ${moment.clock}`;
-  const icon = whisper
-    ? vesveseFaceUrl(whisper.face)
-    : new URL("../icons/icon-192.png", import.meta.url).href;
+  const title = entered ? `${NAMES[moment.key]} vakti girdi` : `${NAMES[moment.key]} vaktine ${state.remind} dakika`;
+  const body = `${state.place.name} · ${moment.clock}`;
+  const icon = new URL("../icons/icon-192.png", import.meta.url).href;
   const options = { body, lang: "tr", icon, tag: moment.id, renotify: true };
-  if (whisper) options.image = icon;
   try {
     const registration = "serviceWorker" in navigator ? await navigator.serviceWorker.getRegistration() : null;
     if (registration?.showNotification) {
@@ -1612,13 +1548,7 @@ async function showReminder(moment) {
   try {
     new Notification(title, options);
   } catch {
-    if (!whisper) return;
-    delete options.image;
-    try {
-      new Notification(title, options);
-    } catch {
-      /* bildirim oluşturulamadı */
-    }
+    /* bildirim oluşturulamadı */
   }
 }
 
