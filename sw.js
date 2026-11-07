@@ -1,5 +1,5 @@
 const PREPROD = self.location.pathname.includes("/dev/");
-const CACHE = PREPROD ? "vakitler-dev-v23" : "vakitler-v23";
+const CACHE = PREPROD ? "vakitler-dev-v24" : "vakitler-v24";
 const CACHE_PREFIX = PREPROD ? "vakitler-dev-" : "vakitler-v";
 
 const FILES = [
