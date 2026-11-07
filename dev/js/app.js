@@ -1310,6 +1310,7 @@ function renderVesveseSample(next = false) {
   const visible = state.vesvese;
   $("vesvese-card").hidden = !visible;
   $("vesvese-actions").hidden = !visible;
+  $("vesvese-try").hidden = !PREPROD;
   $("vesvese-note").textContent = vesveseNote();
   if (!visible) return;
   const face = $("vesvese-face");
@@ -1347,6 +1348,7 @@ async function onVesveseChange() {
 }
 
 async function tryVesvese() {
+  if (!PREPROD) return;
   if (!vesveseSample) vesveseSample = pickVesvese();
   const allowed = await ensureNotify();
   if (!allowed) {
