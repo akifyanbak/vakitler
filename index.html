@@ -232,14 +232,56 @@
 
             <section class="group">
               <h2>Dakika düzeltmesi</h2>
-              <p class="hint">Caminizin cetveline uyması için her vakite dakika ekleyin veya çıkarın.</p>
+              <p class="hint">− vakti öne çeker, + geciktirir. −30 ile 30 arası.</p>
               <div class="adj-grid">
-                <label>İmsak <input type="number" data-adj="fajr" min="-30" max="30" step="1" value="0" inputmode="numeric" /></label>
-                <label>Güneş <input type="number" data-adj="sunrise" min="-30" max="30" step="1" value="0" inputmode="numeric" /></label>
-                <label>Öğle <input type="number" data-adj="dhuhr" min="-30" max="30" step="1" value="0" inputmode="numeric" /></label>
-                <label>İkindi <input type="number" data-adj="asr" min="-30" max="30" step="1" value="0" inputmode="numeric" /></label>
-                <label>Akşam <input type="number" data-adj="maghrib" min="-30" max="30" step="1" value="0" inputmode="numeric" /></label>
-                <label>Yatsı <input type="number" data-adj="isha" min="-30" max="30" step="1" value="0" inputmode="numeric" /></label>
+                <div class="adj">
+                  <span id="adj-fajr-label">İmsak</span>
+                  <div class="adj-step">
+                    <button type="button" data-adj-delta="fajr" data-delta="-1" aria-label="İmsak bir dakika erken">−</button>
+                    <input id="adj-fajr" type="text" data-adj="fajr" value="0" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" aria-labelledby="adj-fajr-label" />
+                    <button type="button" data-adj-delta="fajr" data-delta="1" aria-label="İmsak bir dakika geç">+</button>
+                  </div>
+                </div>
+                <div class="adj">
+                  <span id="adj-sunrise-label">Güneş</span>
+                  <div class="adj-step">
+                    <button type="button" data-adj-delta="sunrise" data-delta="-1" aria-label="Güneş bir dakika erken">−</button>
+                    <input id="adj-sunrise" type="text" data-adj="sunrise" value="0" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" aria-labelledby="adj-sunrise-label" />
+                    <button type="button" data-adj-delta="sunrise" data-delta="1" aria-label="Güneş bir dakika geç">+</button>
+                  </div>
+                </div>
+                <div class="adj">
+                  <span id="adj-dhuhr-label">Öğle</span>
+                  <div class="adj-step">
+                    <button type="button" data-adj-delta="dhuhr" data-delta="-1" aria-label="Öğle bir dakika erken">−</button>
+                    <input id="adj-dhuhr" type="text" data-adj="dhuhr" value="0" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" aria-labelledby="adj-dhuhr-label" />
+                    <button type="button" data-adj-delta="dhuhr" data-delta="1" aria-label="Öğle bir dakika geç">+</button>
+                  </div>
+                </div>
+                <div class="adj">
+                  <span id="adj-asr-label">İkindi</span>
+                  <div class="adj-step">
+                    <button type="button" data-adj-delta="asr" data-delta="-1" aria-label="İkindi bir dakika erken">−</button>
+                    <input id="adj-asr" type="text" data-adj="asr" value="0" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" aria-labelledby="adj-asr-label" />
+                    <button type="button" data-adj-delta="asr" data-delta="1" aria-label="İkindi bir dakika geç">+</button>
+                  </div>
+                </div>
+                <div class="adj">
+                  <span id="adj-maghrib-label">Akşam</span>
+                  <div class="adj-step">
+                    <button type="button" data-adj-delta="maghrib" data-delta="-1" aria-label="Akşam bir dakika erken">−</button>
+                    <input id="adj-maghrib" type="text" data-adj="maghrib" value="0" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" aria-labelledby="adj-maghrib-label" />
+                    <button type="button" data-adj-delta="maghrib" data-delta="1" aria-label="Akşam bir dakika geç">+</button>
+                  </div>
+                </div>
+                <div class="adj">
+                  <span id="adj-isha-label">Yatsı</span>
+                  <div class="adj-step">
+                    <button type="button" data-adj-delta="isha" data-delta="-1" aria-label="Yatsı bir dakika erken">−</button>
+                    <input id="adj-isha" type="text" data-adj="isha" value="0" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" aria-labelledby="adj-isha-label" />
+                    <button type="button" data-adj-delta="isha" data-delta="1" aria-label="Yatsı bir dakika geç">+</button>
+                  </div>
+                </div>
               </div>
             </section>
 
