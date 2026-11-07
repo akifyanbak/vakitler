@@ -1,4 +1,4 @@
-const CACHE = "vakitler-v17";
+const CACHE = "vakitler-v25";
 
 const FILES = [
   "./",
@@ -8,6 +8,17 @@ const FILES = [
   "./js/app.js",
   "./js/mezhep.js",
   "./js/places.js",
+  "./js/vesvese.js",
+  "./icons/vesvese/1.jpg",
+  "./icons/vesvese/2.jpg",
+  "./icons/vesvese/3.jpg",
+  "./icons/vesvese/4.jpg",
+  "./icons/vesvese/5.jpg",
+  "./icons/vesvese/6.jpg",
+  "./icons/vesvese/7.jpg",
+  "./icons/vesvese/8.jpg",
+  "./icons/vesvese/9.jpg",
+  "./icons/vesvese/10.jpg",
   "./vendor/adhan.esm.js",
   "./icons/favicon.svg",
   "./icons/icon-192.png",
@@ -51,6 +62,10 @@ self.addEventListener("activate", (event) => {
     (async () => {
       const keys = await caches.keys();
       await Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key)));
+      const shown = await self.registration.getNotifications();
+      for (const note of shown) {
+        if (String(note.tag).includes("vesvese")) note.close();
+      }
       await self.clients.claim();
     })(),
   );

@@ -8,10 +8,15 @@ import {
 } from "../vendor/adhan.esm.js";
 import { isJafariMadhab, methodNote, normalizeStoredMadhab, prayerParameters } from "./mezhep.js";
 import { FEATURED_IDS, PLACES } from "./places.js";
+import { pickVesvese } from "./vesvese.js";
 
 const STORAGE_KEY = "vakitler.v1";
+const PREPROD = location.pathname.includes("/dev/");
+const VESVESE_HOME_KEY = PREPROD ? "vakitler.dev.vesveseHome" : "vakitler.vesveseHome";
+const VESVESE_HOME_DELAY = 10 * 60 * 1000;
 const KAABA = { lat: 21.422487, lon: 39.826206 };
 const ORDER = ["fajr", "sunrise", "dhuhr", "asr", "maghrib", "isha"];
+const PRAYER_KEYS = ["fajr", "dhuhr", "asr", "maghrib", "isha"];
 const NAMES = {
   fajr: "İmsak",
   sunrise: "Güneş",
@@ -47,6 +52,10 @@ let gotHeading = false;
 let toastTimer = 0;
 let notified = new Set(readNotified());
 let remindTimer = 0;
+let vesveseSample = null;
+let homeVesveseId = "";
+let homeVesveseSample = null;
+let homeVesvesePreview = false;
 
 init();
 
@@ -85,6 +94,7 @@ function loadState() {
     highLatitude: HighLatitudeRule.MiddleOfTheNight,
     theme: "light",
     remind: "off",
+    vesvese: false,
     adjustments: freshAdjustments(),
     selected: null,
     month: null,
@@ -117,6 +127,7 @@ function loadState() {
       highLatitude,
       theme,
       remind,
+      vesvese: raw.vesvese === true,
       adjustments,
     };
   } catch {
@@ -157,6 +168,7 @@ function save() {
     highLatitude: state.highLatitude,
     theme: state.theme,
     remind: state.remind,
+    vesvese: state.vesvese,
     adjustments: state.adjustments,
   };
   try {
@@ -181,7 +193,9 @@ function syncForm() {
   $("madhab-select").value = state.madhab;
   $("latitude-select").value = state.highLatitude;
   $("remind-select").value = state.remind;
+  $("vesvese-select").value = state.vesvese ? "on" : "off";
   syncMethodControl();
+  renderVesveseSample();
   for (const input of document.querySelectorAll("[data-adj]")) {
     input.value = String(state.adjustments[input.dataset.adj] ?? 0);
   }
@@ -244,6 +258,10 @@ function bind() {
     if (state.theme === "system") applyPalette();
   });
   $("remind-select").addEventListener("change", onRemindChange);
+  $("vesvese-select").addEventListener("change", onVesveseChange);
+  $("vesvese-next").addEventListener("click", () => renderVesveseSample(true));
+  $("vesvese-try").addEventListener("click", tryHomeVesvese);
+  $("vesvese-besmele").addEventListener("click", dismissHomeVesvese);
   document.querySelectorAll("[data-adj]").forEach((input) => {
     input.addEventListener("change", () => {
       const key = input.dataset.adj;
@@ -278,6 +296,24 @@ function bind() {
   $("install-native").addEventListener("click", () => installApp());
   $("install-dialog").addEventListener("click", (event) => {
     if (event.target === $("install-dialog")) $("install-dialog").close();
+  });
+  $("notify-close").addEventListener("click", () => finishNotifyAsk(false));
+  $("notify-later").addEventListener("click", () => finishNotifyAsk(false));
+  $("notify-again").addEventListener("click", async () => {
+    if (await askNotificationPermission()) {
+      finishNotifyAsk(true);
+      return;
+    }
+    $("notify-copy").textContent = notifyRetryCopy();
+  });
+  $("notify-dialog").addEventListener("close", () => {
+    if (!notifyRetry) return;
+    const resolve = notifyRetry;
+    notifyRetry = null;
+    resolve(false);
+  });
+  $("notify-dialog").addEventListener("click", (event) => {
+    if (event.target === $("notify-dialog")) finishNotifyAsk(false);
   });
   window.addEventListener("beforeinstallprompt", (event) => {
     event.preventDefault();
@@ -888,6 +924,7 @@ function renderToday() {
   }
   $("method-note").textContent = methodNote(state.madhab, methodLabel(state.method));
   renderHero();
+  renderHomeVesvese();
 }
 
 function renderHero() {
@@ -1050,6 +1087,7 @@ function updateLive() {
   }
   if (resolvedTheme() !== state.appliedPalette) applyPalette();
   renderHero();
+  renderHomeVesvese();
   checkReminders();
 }
 
@@ -1269,10 +1307,30 @@ function remindNote() {
   return "Vakit gelmeden önce bildirir. Uygulama açıkken çalışır.";
 }
 
+let notifyRetry = null;
+let stopNotifyWatch = () => {};
+
 async function ensureNotify() {
   if (!("Notification" in window)) return false;
   if (Notification.permission === "granted") return true;
-  if (Notification.permission === "denied") return false;
+  if (await askNotificationPermission()) return true;
+  if (notifyRetry) return false;
+  $("notify-copy").textContent = notifyRetryCopy();
+  const dialog = $("notify-dialog");
+  const result = new Promise((resolve) => {
+    notifyRetry = resolve;
+  });
+  if (!dialog.open) dialog.showModal();
+  const stop = await watchNotifyGrant();
+  if (!notifyRetry) {
+    stop();
+    return result;
+  }
+  stopNotifyWatch = stop;
+  return result;
+}
+
+async function askNotificationPermission() {
   try {
     return (await Notification.requestPermission()) === "granted";
   } catch {
@@ -1280,17 +1338,190 @@ async function ensureNotify() {
   }
 }
 
-const PRAYER_KEYS = ["fajr", "dhuhr", "asr", "maghrib", "isha"];
+function notifyRetryCopy() {
+  if (!("Notification" in window)) return "Bu tarayıcı bildirim gönderemiyor.";
+  if (Notification.permission === "denied") {
+    if (isIos()) return "iPhone bu siteye bildirimi kapattı. Ayarlar → Bildirimler → Vakitler yolundan izin ver, sonra Tekrar sor’a bas.";
+    return "Tarayıcı bu siteye bildirimi kapattı. Adres çubuğundaki kilit simgesinden Bildirimlere izin ver, sonra Tekrar sor’a bas.";
+  }
+  return "Bildirim sorusu kapanmış. Tekrar soralım mı?";
+}
+
+async function watchNotifyGrant() {
+  if (!navigator.permissions?.query) return () => {};
+  try {
+    const status = await navigator.permissions.query({ name: "notifications" });
+    const onChange = () => {
+      if (status.state === "granted") finishNotifyAsk(true);
+    };
+    status.addEventListener("change", onChange);
+    return () => status.removeEventListener("change", onChange);
+  } catch {
+    return () => {};
+  }
+}
+
+function finishNotifyAsk(result) {
+  stopNotifyWatch();
+  stopNotifyWatch = () => {};
+  const resolve = notifyRetry;
+  notifyRetry = null;
+  const dialog = $("notify-dialog");
+  if (dialog?.open) dialog.close();
+  resolve?.(result);
+}
+
 const NOTIFIED_KEY = "vakitler.notified";
 
+function vesveseFaceUrl(face) {
+  return new URL(`../icons/vesvese/${face}.jpg`, import.meta.url).href;
+}
+
+function homeVesveseTarget(now = Date.now()) {
+  if (!state.vesvese || !state.place) return null;
+  const today = cityToday(state.place.tz);
+  if (!sameDay(state.selected, today)) return null;
+  const candidates = [];
+  const yesterday = addDays(today, -1);
+  const packs = [
+    [yesterday, compute(state.place, yesterday)],
+    [today, compute(state.place, today)],
+  ];
+  for (const [day, pack] of packs) {
+    if (!pack) continue;
+    for (const key of PRAYER_KEYS) {
+      const at = pack.times[key];
+      if (!isValidDate(at) || at.getTime() > now) continue;
+      candidates.push({ day, key, at: at.getTime() });
+    }
+  }
+  const active = candidates.sort((a, b) => a.at - b.at).at(-1);
+  if (!active || now - active.at < VESVESE_HOME_DELAY) return null;
+  const id = `${active.day.y}-${active.day.m}-${active.day.d}-${active.key}`;
+  let dismissed = "";
+  try {
+    dismissed = localStorage.getItem(VESVESE_HOME_KEY) || "";
+  } catch {
+    dismissed = "";
+  }
+  if (dismissed === id) return null;
+  return { id, key: active.key };
+}
+
+function paintHomeVesvese(card, sample) {
+  const face = $("vesvese-home-face");
+  face.src = vesveseFaceUrl(sample.face);
+  face.alt = "Kurnaz gülen şeytan";
+  $("vesvese-home-title").textContent = sample.title;
+  $("vesvese-home-line").textContent = sample.body;
+  card.hidden = false;
+}
+
+function renderHomeVesvese() {
+  const card = $("vesvese-home");
+  if (!card || card.classList.contains("is-leaving")) return;
+  if (homeVesvesePreview && homeVesveseSample) {
+    paintHomeVesvese(card, homeVesveseSample);
+    return;
+  }
+  const target = homeVesveseTarget();
+  if (!target) {
+    card.hidden = true;
+    return;
+  }
+  if (homeVesveseId !== target.id || !homeVesveseSample) {
+    homeVesveseId = target.id;
+    homeVesveseSample = pickVesvese();
+  }
+  paintHomeVesvese(card, homeVesveseSample);
+}
+
+function tryHomeVesvese() {
+  if (!PREPROD || !state.vesvese) return;
+  if (!state.place) {
+    toast("Önce bir şehir seç");
+    return;
+  }
+  if (!vesveseSample) vesveseSample = pickVesvese();
+  const card = $("vesvese-home");
+  card?.classList.remove("is-leaving");
+  homeVesveseSample = vesveseSample;
+  homeVesveseId = "preview";
+  homeVesvesePreview = true;
+  const today = cityToday(state.place.tz);
+  if (!sameDay(state.selected, today)) {
+    state.selected = today;
+    state.month = { y: today.y, m: today.m };
+    state.pinned = false;
+  }
+  showView("today");
+  renderToday();
+  $("vesvese-home")?.scrollIntoView({ block: "center", behavior: "smooth" });
+}
+
+function dismissHomeVesvese() {
+  const card = $("vesvese-home");
+  homeVesvesePreview = false;
+  const target = homeVesveseTarget();
+  if (target) {
+    try {
+      localStorage.setItem(VESVESE_HOME_KEY, target.id);
+    } catch {
+      /* depolama kapalı */
+    }
+  }
+  if (!card || card.hidden || card.classList.contains("is-leaving")) return;
+  card.classList.add("is-leaving");
+  const finish = () => {
+    card.hidden = true;
+    card.classList.remove("is-leaving");
+  };
+  card.addEventListener("transitionend", finish, { once: true });
+  window.setTimeout(finish, 500);
+}
+
+function vesveseNote() {
+  if (!state.vesvese) return "Kapalı. Açınca, vakit girdikten 10 dakika sonra Bugün ekranında durur.";
+  return "Açık. Vakit girdikten 10 dakika sonra Bugün ekranında durur. Besmeleyle kapanır.";
+}
+
+function renderVesveseSample(next = false) {
+  if (next || !vesveseSample) vesveseSample = pickVesvese();
+  const visible = state.vesvese;
+  $("vesvese-card").hidden = !visible;
+  $("vesvese-actions").hidden = !visible;
+  $("vesvese-try").hidden = !PREPROD;
+  $("vesvese-note").textContent = vesveseNote();
+  if (!visible) return;
+  const face = $("vesvese-face");
+  face.src = vesveseFaceUrl(vesveseSample.face);
+  face.alt = "Kurnaz gülen şeytan";
+  $("vesvese-title").textContent = vesveseSample.title;
+  $("vesvese-line").textContent = vesveseSample.body;
+}
+
+function onVesveseChange() {
+  state.vesvese = $("vesvese-select").value === "on";
+  save();
+  renderVesveseSample();
+  renderHomeVesvese();
+}
+
+function notificationsWanted() {
+  return state.remind !== "off";
+}
+
+function momentGrace() {
+  return Number(state.remind) === 0 ? 5 * 60 * 1000 : 2 * 60 * 1000;
+}
+
 function checkReminders() {
-  if (state.remind === "off" || !state.place || !("Notification" in window)) return;
+  if (!notificationsWanted() || !state.place || !("Notification" in window)) return;
   if (Notification.permission !== "granted") return;
   const now = Date.now();
-  const grace = Number(state.remind) === 0 ? 5 * 60 * 1000 : 2 * 60 * 1000;
   for (const moment of remindMoments()) {
     if (notified.has(moment.id)) continue;
-    if (now < moment.when || now >= moment.when + grace) continue;
+    if (now < moment.when || now >= moment.when + momentGrace()) continue;
     notified.add(moment.id);
     persistNotified();
     void showReminder(moment);
@@ -1298,10 +1529,10 @@ function checkReminders() {
 }
 
 function remindMoments() {
-  if (!state.place || state.remind === "off") return [];
+  if (!state.place || !notificationsWanted()) return [];
   const today = cityToday(state.place.tz);
-  const lead = Number(state.remind) * 60 * 1000;
   const moments = [];
+  const lead = Number(state.remind) * 60 * 1000;
   for (const day of [today, addDays(today, 1)]) {
     const pack = compute(state.place, day);
     if (!pack) continue;
@@ -1322,11 +1553,10 @@ function remindMoments() {
 
 function armReminder() {
   window.clearTimeout(remindTimer);
-  if (state.remind === "off" || !state.place || !("Notification" in window)) return;
+  if (!notificationsWanted() || !state.place || !("Notification" in window)) return;
   if (Notification.permission !== "granted") return;
   const now = Date.now();
-  const grace = Number(state.remind) === 0 ? 5 * 60 * 1000 : 2 * 60 * 1000;
-  const upcoming = remindMoments().find((moment) => !notified.has(moment.id) && now < moment.when + grace);
+  const upcoming = remindMoments().find((moment) => !notified.has(moment.id) && now < moment.when + momentGrace());
   if (!upcoming) return;
   const delay = Math.max(0, upcoming.when - now);
   remindTimer = window.setTimeout(() => {
@@ -1337,9 +1567,7 @@ function armReminder() {
 
 async function showReminder(moment) {
   const entered = Number(state.remind) === 0;
-  const title = entered
-    ? `${NAMES[moment.key]} vakti girdi`
-    : `${NAMES[moment.key]} vaktine ${state.remind} dakika`;
+  const title = entered ? `${NAMES[moment.key]} vakti girdi` : `${NAMES[moment.key]} vaktine ${state.remind} dakika`;
   const body = `${state.place.name} · ${moment.clock}`;
   const icon = new URL("../icons/icon-192.png", import.meta.url).href;
   const options = { body, lang: "tr", icon, tag: moment.id, renotify: true };
