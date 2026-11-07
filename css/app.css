@@ -854,6 +854,14 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.48); }
 }
 .coord label { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.92rem; }
 
+#notify-copy {
+  margin: 0.9rem 0 1rem;
+  font-size: 1.08rem;
+  line-height: 1.45;
+}
+
+#notify-dialog .big + .big { margin-top: 0.55rem; }
+
 .toast {
   position: fixed;
   left: 50%;

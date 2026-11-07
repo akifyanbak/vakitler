@@ -279,6 +279,24 @@ function bind() {
   $("install-dialog").addEventListener("click", (event) => {
     if (event.target === $("install-dialog")) $("install-dialog").close();
   });
+  $("notify-close").addEventListener("click", () => finishNotifyAsk(false));
+  $("notify-later").addEventListener("click", () => finishNotifyAsk(false));
+  $("notify-again").addEventListener("click", async () => {
+    if (await askNotificationPermission()) {
+      finishNotifyAsk(true);
+      return;
+    }
+    $("notify-copy").textContent = notifyRetryCopy();
+  });
+  $("notify-dialog").addEventListener("close", () => {
+    if (!notifyRetry) return;
+    const resolve = notifyRetry;
+    notifyRetry = null;
+    resolve(false);
+  });
+  $("notify-dialog").addEventListener("click", (event) => {
+    if (event.target === $("notify-dialog")) finishNotifyAsk(false);
+  });
   window.addEventListener("beforeinstallprompt", (event) => {
     event.preventDefault();
     window.__vakitlerInstall = event;
@@ -1269,15 +1287,68 @@ function remindNote() {
   return "Vakit gelmeden önce bildirir. Uygulama açıkken çalışır.";
 }
 
+let notifyRetry = null;
+let stopNotifyWatch = () => {};
+
 async function ensureNotify() {
   if (!("Notification" in window)) return false;
   if (Notification.permission === "granted") return true;
-  if (Notification.permission === "denied") return false;
+  if (await askNotificationPermission()) return true;
+  if (notifyRetry) return false;
+  $("notify-copy").textContent = notifyRetryCopy();
+  const dialog = $("notify-dialog");
+  const result = new Promise((resolve) => {
+    notifyRetry = resolve;
+  });
+  if (!dialog.open) dialog.showModal();
+  const stop = await watchNotifyGrant();
+  if (!notifyRetry) {
+    stop();
+    return result;
+  }
+  stopNotifyWatch = stop;
+  return result;
+}
+
+async function askNotificationPermission() {
   try {
     return (await Notification.requestPermission()) === "granted";
   } catch {
     return false;
   }
+}
+
+function notifyRetryCopy() {
+  if (!("Notification" in window)) return "Bu tarayıcı bildirim gönderemiyor.";
+  if (Notification.permission === "denied") {
+    if (isIos()) return "iPhone bu siteye bildirimi kapattı. Ayarlar → Bildirimler → Vakitler yolundan izin ver, sonra Tekrar sor’a bas.";
+    return "Tarayıcı bu siteye bildirimi kapattı. Adres çubuğundaki kilit simgesinden Bildirimlere izin ver, sonra Tekrar sor’a bas.";
+  }
+  return "Bildirim sorusu kapanmış. Tekrar soralım mı?";
+}
+
+async function watchNotifyGrant() {
+  if (!navigator.permissions?.query) return () => {};
+  try {
+    const status = await navigator.permissions.query({ name: "notifications" });
+    const onChange = () => {
+      if (status.state === "granted") finishNotifyAsk(true);
+    };
+    status.addEventListener("change", onChange);
+    return () => status.removeEventListener("change", onChange);
+  } catch {
+    return () => {};
+  }
+}
+
+function finishNotifyAsk(result) {
+  stopNotifyWatch();
+  stopNotifyWatch = () => {};
+  const resolve = notifyRetry;
+  notifyRetry = null;
+  const dialog = $("notify-dialog");
+  if (dialog?.open) dialog.close();
+  resolve?.(result);
 }
 
 const PRAYER_KEYS = ["fajr", "dhuhr", "asr", "maghrib", "isha"];
