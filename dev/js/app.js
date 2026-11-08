@@ -220,9 +220,7 @@ function bind() {
   $("place-dialog").addEventListener("click", (event) => {
     if (event.target === $("place-dialog")) $("place-dialog").close();
   });
-  $("place-search").addEventListener("input", () => {
-    void renderPlaceResults();
-  });
+  $("place-search").addEventListener("input", schedulePlaceSearch);
   $("coord-form").addEventListener("submit", onCoordSubmit);
   $("prev-day").addEventListener("click", () => shiftDay(-1));
   $("next-day").addEventListener("click", () => shiftDay(1));
@@ -646,6 +644,19 @@ function openPlaceDialog() {
 }
 
 let placeSearchSeq = 0;
+let placeSearchTimer = 0;
+
+function schedulePlaceSearch() {
+  window.clearTimeout(placeSearchTimer);
+  const query = $("place-search").value.trim();
+  if (fold(query).length < 2) {
+    renderPlaceResults();
+    return;
+  }
+  placeSearchTimer = window.setTimeout(() => {
+    renderPlaceResults();
+  }, 280);
+}
 
 function renderPlaceResults() {
   const query = $("place-search").value.trim();
@@ -658,26 +669,33 @@ function renderPlaceResults() {
   }
   const local = searchPlaces(query);
   const folded = fold(query);
-  if (local.length) addPlaceGroup(root, "Türkiye ve kayıtlı şehirler", local);
-  else if (folded.length < 2) {
-    const empty = document.createElement("p");
-    empty.className = "hint";
-    empty.textContent = "Dünya genelinde aramak için en az 2 harf yazın.";
-    root.append(empty);
+  if (folded.length < 2) {
+    if (local.length) addPlaceGroup(root, "Kayıtlı yerler", local);
+    else {
+      const empty = document.createElement("p");
+      empty.className = "hint";
+      empty.textContent = "Dünya genelinde aramak için en az 2 harf yazın.";
+      root.append(empty);
+    }
     return;
-  } else {
-    const pending = document.createElement("p");
-    pending.className = "hint";
-    pending.id = "place-search-pending";
-    pending.textContent = "Dünya genelinde aranıyor…";
-    root.append(pending);
   }
+  const pending = document.createElement("p");
+  pending.className = "hint";
+  pending.textContent = "Dünya şehirleri aranıyor…";
+  root.append(pending);
+  if (local.length) addPlaceGroup(root, "Kayıtlı yerler", local);
   const seq = ++placeSearchSeq;
   void finishPlaceSearch(query, local, seq);
 }
 
 async function finishPlaceSearch(query, local, seq) {
-  const remote = fold(query).length >= 2 ? await searchRemotePlaces(query) : [];
+  let remote = [];
+  let failed = false;
+  try {
+    remote = await searchRemotePlaces(query);
+  } catch {
+    failed = true;
+  }
   if (seq !== placeSearchSeq) return;
   const root = $("place-results");
   root.replaceChildren();
@@ -685,12 +703,20 @@ async function finishPlaceSearch(query, local, seq) {
   if (!local.length && !remoteOnly.length) {
     const empty = document.createElement("p");
     empty.className = "hint";
-    empty.textContent = "Sonuç yok. Farklı bir yazım veya koordinat deneyin.";
+    empty.textContent = failed
+      ? "Dünya şehirleri alınamadı. Biraz sonra yeniden deneyin veya koordinat girin."
+      : "Sonuç yok. Farklı bir yazım veya koordinat deneyin.";
     root.append(empty);
     return;
   }
-  if (local.length) addPlaceGroup(root, "Türkiye ve kayıtlı şehirler", local);
-  if (remoteOnly.length) addPlaceGroup(root, "Dünya", remoteOnly);
+  if (remoteOnly.length) addPlaceGroup(root, "Dünya şehirleri", remoteOnly);
+  else if (failed) {
+    const note = document.createElement("p");
+    note.className = "hint";
+    note.textContent = "Dünya şehirleri alınamadı. Kayıtlı yerler gösteriliyor.";
+    root.append(note);
+  }
+  if (local.length) addPlaceGroup(root, "Kayıtlı yerler", local);
 }
 
 function addPlaceGroup(root, title, places) {
@@ -745,7 +771,13 @@ function placeFromGeocode(item) {
     lat: item.latitude,
     lon: item.longitude,
     tz: item.timezone || "UTC",
+    population: Number(item.population) || 0,
   };
+}
+
+function preferCities(places) {
+  const cities = places.filter((place) => place.population >= 1000);
+  return (cities.length ? cities : places).slice(0, 25);
 }
 
 function placesSimilar(a, b) {
@@ -757,21 +789,17 @@ async function searchRemotePlaces(query) {
   const key = fold(query);
   if (key.length < 2) return [];
   if (remotePlaceCache.has(key)) return remotePlaceCache.get(key);
-  try {
-    const url = new URL("https://geocoding-api.open-meteo.com/v1/search");
-    url.searchParams.set("name", query.trim());
-    url.searchParams.set("count", "15");
-    url.searchParams.set("language", "tr");
-    url.searchParams.set("format", "json");
-    const response = await fetch(url);
-    if (!response.ok) return [];
-    const data = await response.json();
-    const places = (data.results || []).map(placeFromGeocode).filter(validPlace);
-    remotePlaceCache.set(key, places);
-    return places;
-  } catch {
-    return [];
-  }
+  const url = new URL("https://geocoding-api.open-meteo.com/v1/search");
+  url.searchParams.set("name", query.trim());
+  url.searchParams.set("count", "50");
+  url.searchParams.set("language", "tr");
+  url.searchParams.set("format", "json");
+  const response = await fetch(url);
+  if (!response.ok) throw new Error("geocode");
+  const data = await response.json();
+  const places = preferCities((data.results || []).map(placeFromGeocode).filter(validPlace));
+  remotePlaceCache.set(key, places);
+  return places;
 }
 
 function fold(value) {
@@ -830,6 +858,14 @@ function applyResolvedLabel(place, label) {
 async function lookupPlaceLabel(lat, lon) {
   const key = `${lat.toFixed(3)},${lon.toFixed(3)}`;
   if (geocodeCache.has(key)) return geocodeCache.get(key);
+  const label = (await labelFromBigData(lat, lon)) || (await labelFromNominatim(lat, lon));
+  if (!label) return null;
+  if (!label.tz) label.tz = await timezoneNear(lat, lon, label.name);
+  geocodeCache.set(key, label);
+  return label;
+}
+
+async function labelFromBigData(lat, lon) {
   try {
     const url = new URL("https://api.bigdatacloud.net/data/reverse-geocode-client");
     url.searchParams.set("latitude", String(lat));
@@ -840,18 +876,42 @@ async function lookupPlaceLabel(lat, lon) {
     const data = await response.json();
     const name = data.city || data.locality || data.principalSubdivision || "";
     if (!name) return null;
-    let tz = "";
+    return { name, region: data.countryName || "", tz: "" };
+  } catch {
+    return null;
+  }
+}
+
+async function labelFromNominatim(lat, lon) {
+  try {
+    const url = new URL("https://nominatim.openstreetmap.org/reverse");
+    url.searchParams.set("lat", String(lat));
+    url.searchParams.set("lon", String(lon));
+    url.searchParams.set("format", "jsonv2");
+    url.searchParams.set("accept-language", "tr");
+    url.searchParams.set("zoom", "10");
+    const response = await fetch(url, { headers: { Accept: "application/json" } });
+    if (!response.ok) return null;
+    const data = await response.json();
+    const address = data.address || {};
+    const name = address.city || address.town || address.village || address.municipality || data.name || "";
+    if (!name) return null;
+    return { name, region: address.country || "", tz: "" };
+  } catch {
+    return null;
+  }
+}
+
+async function timezoneNear(lat, lon, name) {
+  try {
     const nearby = await searchRemotePlaces(name);
     const match = nearby
       .map((item) => ({ item, km: haversine(lat, lon, item.lat, item.lon) }))
       .sort((a, b) => a.km - b.km)
-      .find((entry) => entry.km <= 80);
-    if (match && validTz(match.item.tz)) tz = match.item.tz;
-    const label = { name, region: data.countryName || "", tz };
-    geocodeCache.set(key, label);
-    return label;
+      .find((entry) => entry.km <= 80 && validTz(entry.item.tz));
+    return match ? match.item.tz : "";
   } catch {
-    return null;
+    return "";
   }
 }
 
@@ -895,27 +955,35 @@ function geoMessage(error) {
   return "Konum alınamadı. Şehir arayabilirsiniz.";
 }
 
-function placeFromCoords(lat, lon) {
+async function finishGeo(token, position) {
+  if (token !== locatingToken) return;
+  const lat = position.coords.latitude;
+  const lon = position.coords.longitude;
   const near = nearestPlace(lat, lon);
-  if (near && near.km <= 25) return near.place;
-  return {
-    id: `gps-${lat.toFixed(3)}-${lon.toFixed(3)}`,
-    name: "Konum belirleniyor…",
-    region: "",
-    lat,
-    lon,
-    tz: Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Istanbul",
-  };
-}
-
-function finishGeo(token, position) {
+  if (near && near.km <= 25) {
+    locating = false;
+    setGeoBusy(false);
+    setGeoStatus("");
+    choosePlace(near.place);
+    return;
+  }
+  setGeoStatus("Şehir bulunuyor…");
+  const label = await lookupPlaceLabel(lat, lon);
   if (token !== locatingToken) return;
   locating = false;
   setGeoBusy(false);
   setGeoStatus("");
-  const place = placeFromCoords(position.coords.latitude, position.coords.longitude);
-  choosePlace(place);
-  if (needsPlaceLabel(place)) void resolvePlaceLabel(place, token);
+  const tz = label?.tz && validTz(label.tz)
+    ? label.tz
+    : Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Istanbul";
+  choosePlace({
+    id: `gps-${lat.toFixed(3)}-${lon.toFixed(3)}`,
+    name: label?.name || "Bulunduğum yer",
+    region: label?.region || "",
+    lat,
+    lon,
+    tz,
+  });
 }
 
 function failGeo(token, error) {
@@ -1961,7 +2029,7 @@ function registerServiceWorker() {
     window.location.reload();
   });
   const register = () => {
-    navigator.serviceWorker.register(new URL("sw.js", appBase())).catch(() => {});
+    navigator.serviceWorker.register(new URL("sw.js", appBase()), { updateViaCache: "none" }).catch(() => {});
   };
   if (document.readyState === "complete") register();
   else window.addEventListener("load", register);

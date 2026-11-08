@@ -1,5 +1,5 @@
 const PREPROD = self.location.pathname.includes("/dev/");
-const CACHE = PREPROD ? "vakitler-dev-v27" : "vakitler-v27";
+const CACHE = PREPROD ? "vakitler-dev-v28" : "vakitler-v28";
 const CACHE_PREFIX = PREPROD ? "vakitler-dev-" : "vakitler-v";
 
 const FILES = [
@@ -51,7 +51,8 @@ self.addEventListener("install", (event) => {
       await Promise.all(
         ASSETS.map(async (url) => {
           try {
-            await cache.add(url);
+            const fresh = await fetch(url, { cache: "reload" });
+            if (fresh.ok) await cache.put(url, fresh);
           } catch (error) {
             console.warn("Önbelleğe alınamadı", url, error);
           }
@@ -103,7 +104,7 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
   if (!PREPROD && url.pathname.includes("/dev/")) return;
 
-  if (request.mode === "navigate") {
+  if (request.mode === "navigate" || /\.(js|css|html)$/.test(url.pathname)) {
     event.respondWith(networkFirst(request));
     return;
   }
@@ -115,10 +116,11 @@ async function networkFirst(request) {
   const cache = await caches.open(CACHE);
   try {
     const fresh = await fetch(request);
-    if (fresh.ok) cache.put("./index.html", fresh.clone());
+    if (fresh.ok) cache.put(request, fresh.clone());
     return fresh;
   } catch {
     return (
+      (await cache.match(request)) ||
       (await cache.match("./index.html")) ||
       (await cache.match("./")) ||
       new Response("Çevrimdışı. Sayfayı bir kez internete bağlıyken açın.", {
